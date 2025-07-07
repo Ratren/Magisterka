@@ -1,0 +1,11 @@
+./build/main 1000 10000 10000
+Elapsed time (seconds): 10.099475
+
+./build/lvl1 1000 10000 10000
+Elapsed time (seconds): 69.132366
+
+./build/lvl2 1000 10000 10000
+Elapsed time (seconds): 10.424306
+
+./build/lvl3 1000 10000 10000
+Elapsed time (seconds): 12.410895

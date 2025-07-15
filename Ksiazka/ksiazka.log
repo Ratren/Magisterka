@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2024.5.18)  15 JUL 2025 13:33
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2024.5.18)  15 JUL 2025 13:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -904,7 +904,7 @@ LaTeX Font Info:    Trying to load font information for T1+cmss on input line 7
  (C:\Users\rafal.lenart\AppData\Local\Programs\MiKTeX\tex/latex/base\t1cmss.fd
 File: t1cmss.fd 2023/04/13 v2.5m Standard LaTeX font definitions
 )
-Overfull \hbox (32.15266pt too wide) in paragraph at lines 69--103
+Overfull \hbox (24.6545pt too wide) in paragraph at lines 69--103
 [][] 
  []
 

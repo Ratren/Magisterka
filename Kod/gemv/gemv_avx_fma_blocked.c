@@ -2,19 +2,9 @@
 #include <immintrin.h>
 #include <string.h>
 #include <stdint.h>
-
-// ============================================================
-// Atrybuty kompilacji
-// ============================================================
-
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 #define ASSUME_ALIGNED(ptr, align) __builtin_assume_aligned(ptr, align)
-
-// ============================================================
-// Parametry blokowania jako stale kompilacji (constexpr-style)
-// Uzycie enum wymusza traktowanie jako stale compile-time
-// ============================================================
 
 enum L1Params {
     L1_ROW_BLOCK = 64,
@@ -40,9 +30,6 @@ enum PrefetchDist {
     PREFETCH_L2_DIST = 128
 };
 
-// ============================================================
-// Redukcja horyzontalna __m256d -> double
-// ============================================================
 ALWAYS_INLINE double hsum_pd(__m256d v) {
     __m128d low  = _mm256_castpd256_pd128(v);
     __m128d high = _mm256_extractf128_pd(v, 1);
@@ -50,14 +37,6 @@ ALWAYS_INLINE double hsum_pd(__m256d v) {
     return _mm_cvtsd_f64(_mm_hadd_pd(low, low));
 }
 
-// ============================================================
-// Makro generujace wyspecjalizowany kernel dla zadanych 
-// ROW_BLOCK i COL_BLOCK. Kompilator zna rozmiary blokow
-// w czasie kompilacji, co umozliwia:
-// - optymalizacje petli (trip count znany)
-// - lepsza alokacje rejestrow
-// - eliminacje sprawdzen warunkow
-// ============================================================
 
 #define DEFINE_BLOCKED_KERNEL(NAME, ROW_BLK, COL_BLK, USE_PREFETCH)              \
 ALWAYS_INLINE HOT void NAME(                                                      \
@@ -167,19 +146,19 @@ ALWAYS_INLINE HOT void NAME(                                                    
 }
 
 // ============================================================
-// Kernel L1: male macierze, brak prefetch (dane juz w cache)
+// Kernel L1: male macierze
 // ROW_BLOCK=64, COL_BLOCK=512 (ze strojenia)
 // ============================================================
 DEFINE_BLOCKED_KERNEL(gemv_kernel_l1_impl, L1_ROW_BLOCK, L1_COL_BLOCK, 0)
 
 // ============================================================
-// Kernel L2: srednie macierze, lekki prefetch
+// Kernel L2: srednie macierze
 // ROW_BLOCK=128, COL_BLOCK=256 (ze strojenia)
 // ============================================================
 DEFINE_BLOCKED_KERNEL(gemv_kernel_l2_impl, L2_ROW_BLOCK, L2_COL_BLOCK, 1)
 
 // ============================================================
-// Kernel L3: duze macierze, agresywny prefetch
+// Kernel L3: duze macierze
 // ROW_BLOCK=64, COL_BLOCK=512 (ze strojenia)
 // ============================================================
 DEFINE_BLOCKED_KERNEL(gemv_kernel_l3_impl, L3_ROW_BLOCK, L3_COL_BLOCK, 1)
@@ -210,9 +189,6 @@ HOT static void gemv_kernel_l3(int rows, int cols, double alpha,
     gemv_kernel_l3_impl(rows, cols, alpha, A, x, y);
 }
 
-// ============================================================
-// Skalowanie wektora y przez beta - wyodrebnione dla czytelnosci
-// ============================================================
 ALWAYS_INLINE void scale_y(double* __restrict y, int rows, double beta) {
     if (beta == 0.0) {
         memset(y, 0, (size_t)rows * sizeof(double));
@@ -242,8 +218,6 @@ HOT void gemv_avx_fma_blocked(int rows, int cols, double alpha,
                                (size_t)cols * sizeof(double) + 
                                (size_t)rows * sizeof(double);
     
-    // Wybor kernela na podstawie rozmiaru danych
-    // Stale enum sa znane w czasie kompilacji
     if (working_set <= L1_THRESHOLD) {
         gemv_kernel_l1(rows, cols, alpha, A, x, y);
     } else if (working_set <= L2_THRESHOLD) {

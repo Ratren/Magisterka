@@ -4,15 +4,15 @@
 #include <time.h>
 #include <math.h>
 #include <ctype.h>
+#include <omp.h>
 #include "gemv.h"
 #include "openblas/cblas.h"
 
-// OpenBLAS thread control
 extern void openblas_set_num_threads(int num_threads);
 extern int openblas_get_num_threads(void);
 extern void goto_set_num_threads(int num_threads);
 
-#define NUM_IMPLEMENTATIONS 7
+#define NUM_IMPLEMENTATIONS 8
 #define WARMUP_ITERATIONS 10
 
 typedef void (*gemv_func)(int, int, double, const double*, const double*, double, double*);
@@ -33,12 +33,12 @@ typedef struct {
 } Preset;
 
 static Preset presets[] = {
-    {"tiny",   64,   64,   10000},
-    {"small",  256,  256,  5000},
-    {"medium", 1024, 1024, 1000},
-    {"large",  4096, 4096, 100},
-    {"wide",   256,  8192, 500},
-    {"tall",   8192, 256,  500},
+    {"tiny",   64,   64,   500000},
+    {"small",  256,  256,  100000},
+    {"medium", 1024, 1024, 15000},
+    {"large",  4096, 4096, 1500},
+    {"wide",   256,  8192, 10000},
+    {"tall",   8192, 256,  10000},
 };
 static const int num_presets = sizeof(presets) / sizeof(presets[0]);
 
@@ -135,7 +135,6 @@ static void run_benchmark(int rows, int cols, int iterations, Implementation* im
     double alpha = 1.0;
     double beta = 0.0;
     
-    // Oblicz referencje OpenBLAS
     memset(y_ref, 0, rows * sizeof(double));
     openblas_wrapper(rows, cols, alpha, A, x, beta, y_ref);
     
@@ -148,14 +147,12 @@ static void run_benchmark(int rows, int cols, int iterations, Implementation* im
         
         // Rozgrzewka
         for (int w = 0; w < WARMUP_ITERATIONS; w++) {
-            memset(y, 0, rows * sizeof(double));
             impls[impl].func(rows, cols, alpha, A, x, beta, y);
         }
-        
-        // Pomiar
+
+        // Pomiar (beta=0.0 so implementations handle zeroing y themselves)
         clock_gettime(CLOCK_MONOTONIC, &start);
         for (int i = 0; i < iterations; i++) {
-            memset(y, 0, rows * sizeof(double));
             impls[impl].func(rows, cols, alpha, A, x, beta, y);
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
@@ -196,7 +193,6 @@ static void print_results(Implementation* impls, int rows, int cols, int iterati
     }
     printf("----------------------------------------------------------------\n");
     
-    // Znajdz najlepsza implementacje (bez OpenBLAS)
     int best_idx = 0;
     double best_gflops = 0.0;
     for (int i = 0; i < NUM_IMPLEMENTATIONS - 1; i++) {
@@ -317,9 +313,12 @@ static void print_usage(const char* prog) {
 }
 
 int main(int argc, char* argv[]) {
-    // Force OpenBLAS to use single thread for fair comparison
-    openblas_set_num_threads(1);
-    goto_set_num_threads(1);  // Also set GotoBLAS threads
+    // Synchronize OpenBLAS thread count with OMP_NUM_THREADS
+    // This way OMP_NUM_THREADS=1 makes everything single-threaded,
+    // and OMP_NUM_THREADS=N makes both OMP and OpenBLAS use N threads.
+    int nthreads = omp_get_max_threads();
+    openblas_set_num_threads(nthreads);
+    goto_set_num_threads(nthreads);
     
     Implementation impls[NUM_IMPLEMENTATIONS] = {
         {"Naive",           gemv_naive,          0, 0, 0},
@@ -328,11 +327,17 @@ int main(int argc, char* argv[]) {
         {"AVX+FMA Blocked", gemv_avx_fma_blocked, 0, 0, 0},
         {"AVX+FMA V2",      gemv_avx_fma_v2,     0, 0, 0},
         {"AVX+FMA V3",      gemv_avx_fma_v3,     0, 0, 0},
-        {"OpenBLAS (1T)",   openblas_wrapper,    0, 0, 0},
+        {"AVX+FMA V3_OMP",  gemv_avx_fma_v3_omp, 0, 0, 0},
+        {"OpenBLAS",        openblas_wrapper,    0, 0, 0},
     };
     
+    // Update OpenBLAS name based on thread count
+    char blas_name[32];
+    snprintf(blas_name, sizeof(blas_name), "OpenBLAS (%dT)", nthreads);
+    impls[7].name = blas_name;
+    
     print_header();
-    printf("OpenBLAS threads: %d\n\n", openblas_get_num_threads());
+    printf("Threads: OMP=%d, OpenBLAS=%d\n\n", omp_get_max_threads(), openblas_get_num_threads());
     
     if (argc == 1) {
         // Domyslnie: medium

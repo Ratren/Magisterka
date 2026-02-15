@@ -28,4 +28,8 @@ void gemv_avx_fma_v3(int rows, int cols, double alpha,
                      const double* A, const double* x,
                      double beta, double* y);
 
+void gemv_avx_fma_v3_omp(int rows, int cols, double alpha,
+                         const double* A, const double* x,
+                         double beta, double* y);
+
 #endif

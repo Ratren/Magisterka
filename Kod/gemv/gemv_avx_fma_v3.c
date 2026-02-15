@@ -3,19 +3,8 @@
 #include <string.h>
 #include <stdint.h>
 
-// ============================================================
-// V3: Optimized for medium/large matrices (L3-resident)
-// Key optimizations:
-// - Software prefetching for next rows
-// - 8-row kernel to reduce loop overhead
-// - Aggressive unrolling (16 elements per iteration)
-// ============================================================
-
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
-
-// Prefetch distance in cache lines (64 bytes = 8 doubles)
-#define PREFETCH_DIST 4
 
 ALWAYS_INLINE double hsum_pd(__m256d v) {
     __m128d low  = _mm256_castpd256_pd128(v);
@@ -26,8 +15,8 @@ ALWAYS_INLINE double hsum_pd(__m256d v) {
 
 // ============================================================
 // 4-row kernel with 2 accumulators per row
-// This hides FMA latency better (Zen3: 5 cycle latency, 2/cycle throughput)
-// We need ~10 independent FMAs in flight to saturate
+// This hides FMA latency better (Zen3: 4 cycle latency, 2/cycle throughput)
+// We need ~8 independent FMAs in flight to saturate
 // 4 rows × 2 accumulators = 8 independent chains
 // ============================================================
 ALWAYS_INLINE HOT void gemv_kernel_4rows_dual_acc(
@@ -59,7 +48,7 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows_dual_acc(
         __m256d x2 = _mm256_load_pd(&x[j + 8]);
         __m256d x3 = _mm256_load_pd(&x[j + 12]);
         
-        // Row 0 - alternate between sum0a and sum0b
+        // Row 0
         sum0a = _mm256_fmadd_pd(_mm256_load_pd(&a0[j]), x0, sum0a);
         sum0b = _mm256_fmadd_pd(_mm256_load_pd(&a0[j + 4]), x1, sum0b);
         sum0a = _mm256_fmadd_pd(_mm256_load_pd(&a0[j + 8]), x2, sum0a);
@@ -114,7 +103,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows_dual_acc(
         sum3 = _mm256_fmadd_pd(_mm256_load_pd(&a3[j]), xv, sum3);
     }
     
-    // Scalar tail
     double t0 = 0, t1 = 0, t2 = 0, t3 = 0;
     for (; j < cols; j++) {
         double xj = x[j];
@@ -130,9 +118,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows_dual_acc(
     y[3] += alpha * (hsum_pd(sum3) + t3);
 }
 
-// ============================================================
-// Single row kernel for remainder
-// ============================================================
 ALWAYS_INLINE HOT void gemv_kernel_1row(
     int cols,
     const double* __restrict a,
@@ -162,17 +147,12 @@ ALWAYS_INLINE HOT void gemv_kernel_1row(
     *y += alpha * (hsum_pd(sum) + t);
 }
 
-// ============================================================
-// Main GEMV function V3
-// Uses 8-row kernel for better throughput on medium/large
-// ============================================================
 HOT void gemv_avx_fma_v3(int rows, int cols, double alpha,
                          const double* __restrict A,
                          const double* __restrict x,
                          double beta,
                          double* __restrict y)
 {
-    // Scale y by beta
     if (beta == 0.0) {
         memset(y, 0, (size_t)rows * sizeof(double));
     } else if (beta != 1.0) {

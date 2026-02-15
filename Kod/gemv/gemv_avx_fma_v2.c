@@ -3,19 +3,10 @@
 #include <string.h>
 #include <stdint.h>
 
-// ============================================================
-// OpenBLAS-inspired GEMV implementation
-// Key insight: minimize horizontal reductions by accumulating
-// across entire row before reducing
-// ============================================================
-
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 #define ASSUME_ALIGNED(ptr, align) __builtin_assume_aligned(ptr, align)
 
-// ============================================================
-// Horizontal sum - called only once per row
-// ============================================================
 ALWAYS_INLINE double hsum_pd(__m256d v) {
     __m128d low  = _mm256_castpd256_pd128(v);
     __m128d high = _mm256_extractf128_pd(v, 1);
@@ -23,10 +14,6 @@ ALWAYS_INLINE double hsum_pd(__m256d v) {
     return _mm_cvtsd_f64(_mm_hadd_pd(low, low));
 }
 
-// ============================================================
-// Core kernel: Process 4 rows at a time, entire column span
-// Mimics OpenBLAS dgemv_t_microk_haswell-4.c structure
-// ============================================================
 ALWAYS_INLINE HOT void gemv_kernel_4rows(
     int cols,
     const double* __restrict a0,
@@ -44,7 +31,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows(
     
     int j = 0;
     
-    // Main loop: 8 elements per iteration (like OpenBLAS)
     #pragma GCC unroll 2
     for (; j + 7 < cols; j += 8) {
         __m256d x0 = _mm256_load_pd(&x[j]);
@@ -93,9 +79,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows(
     y[3] += alpha * (hsum_pd(sum3) + t3);
 }
 
-// ============================================================
-// Single row kernel for remainder
-// ============================================================
 ALWAYS_INLINE HOT void gemv_kernel_1row(
     int cols,
     const double* __restrict a,
@@ -125,9 +108,6 @@ ALWAYS_INLINE HOT void gemv_kernel_1row(
     *y += alpha * (hsum_pd(sum) + t);
 }
 
-// ============================================================
-// Main GEMV function - OpenBLAS style
-// ============================================================
 HOT void gemv_avx_fma_v2(int rows, int cols, double alpha,
                          const double* __restrict A,
                          const double* __restrict x,
@@ -148,7 +128,6 @@ HOT void gemv_avx_fma_v2(int rows, int cols, double alpha,
     
     int i = 0;
     
-    // Process 4 rows at a time
     for (; i + 3 < rows; i += 4) {
         gemv_kernel_4rows(cols,
                           a_ptr,
@@ -160,7 +139,6 @@ HOT void gemv_avx_fma_v2(int rows, int cols, double alpha,
         y_ptr += 4;
     }
     
-    // Handle remaining rows
     for (; i < rows; i++) {
         gemv_kernel_1row(cols, a_ptr, x, y_ptr, alpha);
         a_ptr += cols;

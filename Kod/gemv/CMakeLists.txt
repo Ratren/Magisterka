@@ -32,7 +32,7 @@ add_library(gemv_impl STATIC
 target_link_libraries(gemv_impl PUBLIC OpenMP::OpenMP_C)
 
 add_executable(benchmark benchmark.c)
-target_link_libraries(benchmark PRIVATE gemv_impl openblas m)
+target_link_libraries(benchmark PRIVATE gemv_impl openblas m dl)
 
 add_executable(tuning tuning.c)
 target_link_libraries(tuning PRIVATE openblas m)

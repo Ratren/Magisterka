@@ -20,6 +20,11 @@
 // Don't parallelize if too few rows or elements (thread overhead ~1-2us)
 #define MIN_ROWS_FOR_PARALLEL 128
 #define MIN_ELEMENTS_FOR_PARALLEL (256 * 256)
+// Very large matrices are memory-bound; multi-threaded access causes
+// contention on the memory controller and hurts performance.
+// 4096x4096 = 16M elements: serial V3 gets ~10 GFLOPS, OMP gets ~7.
+// Threshold at 8M covers medium (1M) but skips large (16M).
+#define MAX_ELEMENTS_FOR_PARALLEL (8 * 1024 * 1024)
 
 ALWAYS_INLINE double hsum_pd(__m256d v) {
     __m128d low  = _mm256_castpd256_pd128(v);
@@ -221,8 +226,10 @@ HOT void gemv_avx_fma_v3_omp(int rows, int cols, double alpha,
 
     size_t total_elements = (size_t)rows * cols;
 
-    // For small matrices, serial is faster (thread creation overhead)
-    if (rows < MIN_ROWS_FOR_PARALLEL || total_elements < MIN_ELEMENTS_FOR_PARALLEL) {
+    // Serial fallback: too small (thread overhead) or too large (memory-bound)
+    if (rows < MIN_ROWS_FOR_PARALLEL ||
+        total_elements < MIN_ELEMENTS_FOR_PARALLEL ||
+        total_elements > MAX_ELEMENTS_FOR_PARALLEL) {
         process_row_range(0, rows, cols, alpha, A, x, y);
         return;
     }

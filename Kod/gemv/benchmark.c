@@ -17,8 +17,17 @@ extern void goto_set_num_threads(int num_threads);
 #define NUM_RUNS 5
 #define WARMUP_ITERATIONS 10
 
-// BLIS loaded dynamically to avoid symbol conflicts with OpenBLAS
-// Uses Fortran dgemv_ interface (always available in BLIS)
+static const char* json_output_path = NULL;
+
+typedef struct {
+    double median;
+    double min;
+    double max;
+    double stddev;
+} PerfResult;
+
+static PerfResult saved_results[6][NUM_IMPLEMENTATIONS];
+
 static void* blis_handle = NULL;
 typedef void (*blis_dgemv_f77_func)(const char* trans, const int* m, const int* n,
                                     const double* alpha, const double* A, const int* lda,
@@ -49,12 +58,12 @@ typedef struct {
 } Preset;
 
 static Preset presets[] = {
-    {"tiny",   64,   64,   50000000},
-    {"small",  256,  256,  10000000},
-    {"medium", 1024, 1024, 15000},
-    {"large",  4096, 4096, 1500},
-    {"wide",   256,  8192, 10000},
-    {"tall",   8192, 256,  10000},
+    {"tiny",   64,   64,   5000000},
+    {"small",  256,  256,  200000},
+    {"medium", 1024, 1024, 10000},
+    {"large",  4096, 4096, 300},
+    {"wide",   256,  8192, 5000},
+    {"tall",   8192, 256,  5000},
 };
 static const int num_presets = sizeof(presets) / sizeof(presets[0]);
 
@@ -188,7 +197,7 @@ static double read_cpu_freq_mhz(void) {
     char buf[32];
     if (fgets(buf, sizeof(buf), fp)) {
         fclose(fp);
-        return atof(buf) / 1000.0;  // scaling_cur_freq is in KHz
+        return atof(buf) / 1000.0; 
     }
     fclose(fp);
     return -1;
@@ -272,12 +281,10 @@ static void run_benchmark(int rows, int cols, int iterations, Implementation* im
         printf("  [%d/%d] %-20s", impl + 1, NUM_IMPLEMENTATIONS, impls[impl].name);
         fflush(stdout);
 
-        // Warmup
         for (int w = 0; w < WARMUP_ITERATIONS; w++) {
             impls[impl].func(rows, cols, alpha, A, x, beta, y);
         }
 
-        // Multiple measurement runs
         double min_g = 1e18, max_g = 0.0;
         for (int run = 0; run < NUM_RUNS; run++) {
             clock_gettime(CLOCK_MONOTONIC_RAW, &start);
@@ -394,6 +401,46 @@ static void run_single_preset(Preset* p, Implementation* impls) {
     print_results(impls, p->rows, p->cols, p->iterations);
 }
 
+static void write_json_results(Implementation* impls) {
+    FILE* f = fopen(json_output_path, "w");
+    if (!f) { fprintf(stderr, "Cannot open %s for writing\n", json_output_path); return; }
+
+    char cpu_name[256];
+    read_cpu_name(cpu_name, sizeof(cpu_name));
+    int nthreads = omp_get_max_threads();
+
+    /* escape any quotes in cpu_name just in case */
+    fprintf(f, "{\n");
+    fprintf(f, "  \"cpu\": \"%s\",\n", cpu_name);
+    fprintf(f, "  \"threads\": %d,\n", nthreads);
+    fprintf(f, "  \"runs\": %d,\n", NUM_RUNS);
+    fprintf(f, "  \"presets\": [\n");
+
+    for (int p = 0; p < num_presets; p++) {
+        fprintf(f, "    {\n");
+        fprintf(f, "      \"name\": \"%s\",\n", presets[p].name);
+        fprintf(f, "      \"rows\": %d,\n", presets[p].rows);
+        fprintf(f, "      \"cols\": %d,\n", presets[p].cols);
+        fprintf(f, "      \"implementations\": {\n");
+        for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) {
+            fprintf(f, "        \"%s\": {\"median\": %.4f, \"min\": %.4f, \"max\": %.4f, \"stddev\": %.4f}%s\n",
+                    impls[i].name,
+                    saved_results[p][i].median,
+                    saved_results[p][i].min,
+                    saved_results[p][i].max,
+                    saved_results[p][i].stddev,
+                    i < NUM_IMPLEMENTATIONS - 1 ? "," : "");
+        }
+        fprintf(f, "      }\n");
+        fprintf(f, "    }%s\n", p < num_presets - 1 ? "," : "");
+    }
+
+    fprintf(f, "  ]\n");
+    fprintf(f, "}\n");
+    fclose(f);
+    printf("\nResults written to %s\n", json_output_path);
+}
+
 static void run_all_presets(Implementation* impls) {
     double all_results[num_presets][NUM_IMPLEMENTATIONS];
 
@@ -407,6 +454,10 @@ static void run_all_presets(Implementation* impls) {
 
         for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) {
             all_results[p][i] = impls[i].median_gflops;
+            saved_results[p][i].median = impls[i].median_gflops;
+            saved_results[p][i].min    = impls[i].min_gflops;
+            saved_results[p][i].max    = impls[i].max_gflops;
+            saved_results[p][i].stddev = impls[i].stddev_gflops;
         }
 
         printf("\n");
@@ -450,6 +501,10 @@ static void run_all_presets(Implementation* impls) {
         printf("  %s: %.2f GFLOPS\n", impls[i].name, avg);
     }
     printf("================================================================\n");
+
+    if (json_output_path) {
+        write_json_results(impls);
+    }
 }
 
 static void print_usage(const char* prog) {
@@ -491,6 +546,17 @@ int main(int argc, char* argv[]) {
     snprintf(blis_name_buf, sizeof(blis_name_buf), "BLIS (%dT)%s", nthreads, has_blis ? "" : " N/A");
     impls[7].name = openblas_name;
     impls[8].name = blis_name_buf;
+
+    /* strip --json <path> from argv before preset dispatch */
+    for (int i = 1; i < argc - 1; i++) {
+        if (strcmp(argv[i], "--json") == 0) {
+            json_output_path = argv[i + 1];
+            /* remove both args by shifting */
+            for (int j = i; j < argc - 2; j++) argv[j] = argv[j + 2];
+            argc -= 2;
+            break;
+        }
+    }
 
     print_header();
     printf("Threads: OMP=%d, OpenBLAS=%d, BLIS=%s\n\n",

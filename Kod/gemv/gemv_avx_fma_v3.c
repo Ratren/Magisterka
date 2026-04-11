@@ -13,12 +13,6 @@ ALWAYS_INLINE double hsum_pd(__m256d v) {
     return _mm_cvtsd_f64(_mm_hadd_pd(low, low));
 }
 
-// ============================================================
-// 4-row kernel with 2 accumulators per row
-// This hides FMA latency better (Zen3: 4 cycle latency, 2/cycle throughput)
-// We need ~8 independent FMAs in flight to saturate
-// 4 rows × 2 accumulators = 8 independent chains
-// ============================================================
 ALWAYS_INLINE HOT void gemv_kernel_4rows_dual_acc(
     int cols,
     const double* __restrict a0,
@@ -29,7 +23,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows_dual_acc(
     double* __restrict y,
     double alpha)
 {
-    // Two accumulators per row to hide latency
     __m256d sum0a = _mm256_setzero_pd();
     __m256d sum0b = _mm256_setzero_pd();
     __m256d sum1a = _mm256_setzero_pd();
@@ -41,45 +34,38 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows_dual_acc(
     
     int j = 0;
     
-    // Main loop: 16 elements per iteration, alternating accumulators
     for (; j + 15 < cols; j += 16) {
         __m256d x0 = _mm256_load_pd(&x[j]);
         __m256d x1 = _mm256_load_pd(&x[j + 4]);
         __m256d x2 = _mm256_load_pd(&x[j + 8]);
         __m256d x3 = _mm256_load_pd(&x[j + 12]);
         
-        // Row 0
         sum0a = _mm256_fmadd_pd(_mm256_load_pd(&a0[j]), x0, sum0a);
         sum0b = _mm256_fmadd_pd(_mm256_load_pd(&a0[j + 4]), x1, sum0b);
         sum0a = _mm256_fmadd_pd(_mm256_load_pd(&a0[j + 8]), x2, sum0a);
         sum0b = _mm256_fmadd_pd(_mm256_load_pd(&a0[j + 12]), x3, sum0b);
         
-        // Row 1
         sum1a = _mm256_fmadd_pd(_mm256_load_pd(&a1[j]), x0, sum1a);
         sum1b = _mm256_fmadd_pd(_mm256_load_pd(&a1[j + 4]), x1, sum1b);
         sum1a = _mm256_fmadd_pd(_mm256_load_pd(&a1[j + 8]), x2, sum1a);
         sum1b = _mm256_fmadd_pd(_mm256_load_pd(&a1[j + 12]), x3, sum1b);
         
-        // Row 2
         sum2a = _mm256_fmadd_pd(_mm256_load_pd(&a2[j]), x0, sum2a);
         sum2b = _mm256_fmadd_pd(_mm256_load_pd(&a2[j + 4]), x1, sum2b);
         sum2a = _mm256_fmadd_pd(_mm256_load_pd(&a2[j + 8]), x2, sum2a);
         sum2b = _mm256_fmadd_pd(_mm256_load_pd(&a2[j + 12]), x3, sum2b);
         
-        // Row 3
         sum3a = _mm256_fmadd_pd(_mm256_load_pd(&a3[j]), x0, sum3a);
         sum3b = _mm256_fmadd_pd(_mm256_load_pd(&a3[j + 4]), x1, sum3b);
         sum3a = _mm256_fmadd_pd(_mm256_load_pd(&a3[j + 8]), x2, sum3a);
         sum3b = _mm256_fmadd_pd(_mm256_load_pd(&a3[j + 12]), x3, sum3b);
     }
     
-    // Combine accumulators
     __m256d sum0 = _mm256_add_pd(sum0a, sum0b);
     __m256d sum1 = _mm256_add_pd(sum1a, sum1b);
     __m256d sum2 = _mm256_add_pd(sum2a, sum2b);
     __m256d sum3 = _mm256_add_pd(sum3a, sum3b);
     
-    // Handle 8 elements
     for (; j + 7 < cols; j += 8) {
         __m256d x0 = _mm256_load_pd(&x[j]);
         __m256d x1 = _mm256_load_pd(&x[j + 4]);
@@ -94,7 +80,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows_dual_acc(
         sum3 = _mm256_fmadd_pd(_mm256_load_pd(&a3[j + 4]), x1, sum3);
     }
     
-    // Handle 4 elements
     for (; j + 3 < cols; j += 4) {
         __m256d xv = _mm256_load_pd(&x[j]);
         sum0 = _mm256_fmadd_pd(_mm256_load_pd(&a0[j]), xv, sum0);
@@ -166,7 +151,6 @@ HOT void gemv_avx_fma_v3(int rows, int cols, double alpha,
     
     int i = 0;
     
-    // Process 4 rows at a time with dual accumulators
     for (; i + 3 < rows; i += 4) {
         gemv_kernel_4rows_dual_acc(cols,
                                    a_ptr,
@@ -178,7 +162,6 @@ HOT void gemv_avx_fma_v3(int rows, int cols, double alpha,
         y_ptr += 4;
     }
     
-    // Handle remaining rows
     for (; i < rows; i++) {
         gemv_kernel_1row(cols, a_ptr, x, y_ptr, alpha);
         a_ptr += cols;

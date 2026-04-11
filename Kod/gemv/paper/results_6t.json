@@ -1,0 +1,103 @@
+{
+  "cpu": "AMD Ryzen 5 5600 6-Core Processor",
+  "threads": 6,
+  "runs": 5,
+  "presets": [
+    {
+      "name": "tiny",
+      "rows": 64,
+      "cols": 64,
+      "implementations": {
+        "Naive": {"median": 20.6074, "min": 20.5752, "max": 20.7079, "stddev": 0.0597},
+        "SIMD": {"median": 25.9753, "min": 25.9063, "max": 26.3599, "stddev": 0.2096},
+        "SIMD + Prefetch": {"median": 25.5273, "min": 25.3308, "max": 25.9350, "stddev": 0.2034},
+        "AVX+FMA Blocked": {"median": 34.1623, "min": 34.1203, "max": 34.3714, "stddev": 0.0954},
+        "AVX+FMA V2": {"median": 37.3689, "min": 37.2224, "max": 37.4872, "stddev": 0.1082},
+        "AVX+FMA V3": {"median": 40.1223, "min": 40.0663, "max": 40.2649, "stddev": 0.0687},
+        "AVX+FMA V3_OMP": {"median": 40.3253, "min": 40.2279, "max": 40.9942, "stddev": 0.3027},
+        "OpenBLAS (6T)": {"median": 27.0872, "min": 27.0464, "max": 27.1150, "stddev": 0.0253},
+        "BLIS (6T)": {"median": 34.2297, "min": 34.2189, "max": 34.3003, "stddev": 0.0326}
+      }
+    },
+    {
+      "name": "small",
+      "rows": 256,
+      "cols": 256,
+      "implementations": {
+        "Naive": {"median": 15.9391, "min": 15.8578, "max": 16.2144, "stddev": 0.1303},
+        "SIMD": {"median": 22.1801, "min": 22.0721, "max": 22.5813, "stddev": 0.1864},
+        "SIMD + Prefetch": {"median": 22.0309, "min": 21.9630, "max": 22.2620, "stddev": 0.1280},
+        "AVX+FMA Blocked": {"median": 24.9970, "min": 24.7784, "max": 25.9409, "stddev": 0.4837},
+        "AVX+FMA V2": {"median": 24.5137, "min": 24.3488, "max": 25.2293, "stddev": 0.3330},
+        "AVX+FMA V3": {"median": 25.3067, "min": 25.1682, "max": 25.3595, "stddev": 0.0713},
+        "AVX+FMA V3_OMP": {"median": 77.4260, "min": 76.6846, "max": 78.3764, "stddev": 0.6054},
+        "OpenBLAS (6T)": {"median": 23.7139, "min": 23.3030, "max": 24.3118, "stddev": 0.3954},
+        "BLIS (6T)": {"median": 71.8120, "min": 71.2412, "max": 72.0319, "stddev": 0.3020}
+      }
+    },
+    {
+      "name": "medium",
+      "rows": 1024,
+      "cols": 1024,
+      "implementations": {
+        "Naive": {"median": 12.6573, "min": 12.6004, "max": 12.8691, "stddev": 0.0986},
+        "SIMD": {"median": 19.1827, "min": 19.0886, "max": 19.2332, "stddev": 0.0543},
+        "SIMD + Prefetch": {"median": 19.2682, "min": 19.1061, "max": 19.6007, "stddev": 0.2274},
+        "AVX+FMA Blocked": {"median": 20.5052, "min": 20.0710, "max": 20.7094, "stddev": 0.2621},
+        "AVX+FMA V2": {"median": 22.9289, "min": 22.0630, "max": 23.2479, "stddev": 0.4995},
+        "AVX+FMA V3": {"median": 22.1024, "min": 22.0031, "max": 22.8959, "stddev": 0.3716},
+        "AVX+FMA V3_OMP": {"median": 101.0683, "min": 96.6495, "max": 101.7188, "stddev": 2.0835},
+        "OpenBLAS (6T)": {"median": 97.7678, "min": 97.0789, "max": 98.3258, "stddev": 0.4054},
+        "BLIS (6T)": {"median": 100.4628, "min": 99.8813, "max": 101.2982, "stddev": 0.4961}
+      }
+    },
+    {
+      "name": "large",
+      "rows": 4096,
+      "cols": 4096,
+      "implementations": {
+        "Naive": {"median": 7.4538, "min": 7.3702, "max": 7.6874, "stddev": 0.1136},
+        "SIMD": {"median": 7.5002, "min": 7.4745, "max": 7.5572, "stddev": 0.0298},
+        "SIMD + Prefetch": {"median": 7.7895, "min": 7.6979, "max": 7.8261, "stddev": 0.0607},
+        "AVX+FMA Blocked": {"median": 7.0370, "min": 7.0120, "max": 7.3111, "stddev": 0.1444},
+        "AVX+FMA V2": {"median": 9.9231, "min": 9.8265, "max": 10.1032, "stddev": 0.1155},
+        "AVX+FMA V3": {"median": 9.8112, "min": 9.4081, "max": 10.0283, "stddev": 0.2104},
+        "AVX+FMA V3_OMP": {"median": 9.6087, "min": 9.5601, "max": 9.9431, "stddev": 0.1581},
+        "OpenBLAS (6T)": {"median": 7.9460, "min": 7.8843, "max": 7.9736, "stddev": 0.0315},
+        "BLIS (6T)": {"median": 7.2199, "min": 7.1605, "max": 7.2984, "stddev": 0.0513}
+      }
+    },
+    {
+      "name": "wide",
+      "rows": 256,
+      "cols": 8192,
+      "implementations": {
+        "Naive": {"median": 11.2744, "min": 11.2410, "max": 11.3907, "stddev": 0.0572},
+        "SIMD": {"median": 15.2854, "min": 15.0658, "max": 15.6259, "stddev": 0.2261},
+        "SIMD + Prefetch": {"median": 14.4435, "min": 14.4216, "max": 14.6061, "stddev": 0.0749},
+        "AVX+FMA Blocked": {"median": 18.9961, "min": 18.9454, "max": 19.1564, "stddev": 0.0840},
+        "AVX+FMA V2": {"median": 22.9980, "min": 22.8602, "max": 23.0974, "stddev": 0.1042},
+        "AVX+FMA V3": {"median": 22.7515, "min": 22.7108, "max": 23.4185, "stddev": 0.3039},
+        "AVX+FMA V3_OMP": {"median": 100.6572, "min": 91.8613, "max": 101.1079, "stddev": 3.9449},
+        "OpenBLAS (6T)": {"median": 90.0659, "min": 89.4942, "max": 90.8163, "stddev": 0.4317},
+        "BLIS (6T)": {"median": 93.3945, "min": 91.4927, "max": 94.7548, "stddev": 1.2303}
+      }
+    },
+    {
+      "name": "tall",
+      "rows": 8192,
+      "cols": 256,
+      "implementations": {
+        "Naive": {"median": 15.4203, "min": 15.2743, "max": 15.6989, "stddev": 0.1538},
+        "SIMD": {"median": 20.6615, "min": 20.2728, "max": 20.9160, "stddev": 0.2467},
+        "SIMD + Prefetch": {"median": 20.4485, "min": 20.3103, "max": 20.6706, "stddev": 0.1206},
+        "AVX+FMA Blocked": {"median": 22.4055, "min": 22.1980, "max": 22.8511, "stddev": 0.2358},
+        "AVX+FMA V2": {"median": 20.8501, "min": 20.7364, "max": 21.0850, "stddev": 0.1488},
+        "AVX+FMA V3": {"median": 21.2075, "min": 21.1111, "max": 21.5875, "stddev": 0.1820},
+        "AVX+FMA V3_OMP": {"median": 101.9318, "min": 94.5838, "max": 103.3197, "stddev": 3.3990},
+        "OpenBLAS (6T)": {"median": 94.0117, "min": 93.4527, "max": 96.6815, "stddev": 1.4148},
+        "BLIS (6T)": {"median": 100.1547, "min": 98.4664, "max": 101.1877, "stddev": 0.8941}
+      }
+    }
+  ]
+}

@@ -4,25 +4,20 @@
 #include <stdint.h>
 #include <omp.h>
 
-// ============================================================
 // V3 OpenMP: Parallel GEMV for Zen 3
 //
-// Strategy: row-parallel decomposition
 // - Each thread gets a contiguous block of rows (aligned to 4)
 // - No false sharing: each thread writes separate y region
 // - x vector shared read-only (fits in L3, broadcast efficient)
-// - Single omp parallel region, manual block division
-// ============================================================
 
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 
-// Don't parallelize if too few rows or elements (thread overhead ~1-2us)
+// Don't parallelize if too few rows or elements 
 #define MIN_ROWS_FOR_PARALLEL 128
 #define MIN_ELEMENTS_FOR_PARALLEL (256 * 256)
 // Very large matrices are memory-bound; multi-threaded access causes
 // contention on the memory controller and hurts performance.
-// 4096x4096 = 16M elements: serial V3 gets ~10 GFLOPS, OMP gets ~7.
 // Threshold at 8M covers medium (1M) but skips large (16M).
 #define MAX_ELEMENTS_FOR_PARALLEL (8 * 1024 * 1024)
 
@@ -33,10 +28,6 @@ ALWAYS_INLINE double hsum_pd(__m256d v) {
     return _mm_cvtsd_f64(_mm_hadd_pd(low, low));
 }
 
-// ============================================================
-// 4-row kernel with dual accumulators
-// 8 independent FMA chains (4 rows x 2 accumulators)
-// ============================================================
 ALWAYS_INLINE HOT void gemv_kernel_4rows(
     int cols,
     const double* __restrict a0,
@@ -58,7 +49,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows(
 
     int j = 0;
 
-    // Main loop: 16 elements per iteration, alternating accumulators
     for (; j + 15 < cols; j += 16) {
         __m256d x0 = _mm256_load_pd(&x[j]);
         __m256d x1 = _mm256_load_pd(&x[j + 4]);
@@ -86,13 +76,11 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows(
         sum3b = _mm256_fmadd_pd(_mm256_load_pd(&a3[j + 12]), x3, sum3b);
     }
 
-    // Combine accumulators
     __m256d sum0 = _mm256_add_pd(sum0a, sum0b);
     __m256d sum1 = _mm256_add_pd(sum1a, sum1b);
     __m256d sum2 = _mm256_add_pd(sum2a, sum2b);
     __m256d sum3 = _mm256_add_pd(sum3a, sum3b);
 
-    // Handle 8 elements
     for (; j + 7 < cols; j += 8) {
         __m256d x0 = _mm256_load_pd(&x[j]);
         __m256d x1 = _mm256_load_pd(&x[j + 4]);
@@ -107,7 +95,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows(
         sum3 = _mm256_fmadd_pd(_mm256_load_pd(&a3[j + 4]), x1, sum3);
     }
 
-    // Handle 4 elements
     for (; j + 3 < cols; j += 4) {
         __m256d xv = _mm256_load_pd(&x[j]);
         sum0 = _mm256_fmadd_pd(_mm256_load_pd(&a0[j]), xv, sum0);
@@ -116,7 +103,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows(
         sum3 = _mm256_fmadd_pd(_mm256_load_pd(&a3[j]), xv, sum3);
     }
 
-    // Scalar tail
     double t0 = 0, t1 = 0, t2 = 0, t3 = 0;
     for (; j < cols; j++) {
         double xj = x[j];
@@ -132,9 +118,6 @@ ALWAYS_INLINE HOT void gemv_kernel_4rows(
     y[3] += alpha * (hsum_pd(sum3) + t3);
 }
 
-// ============================================================
-// Single row kernel
-// ============================================================
 ALWAYS_INLINE HOT void gemv_kernel_1row(
     int cols,
     const double* __restrict a,
@@ -167,9 +150,6 @@ ALWAYS_INLINE HOT void gemv_kernel_1row(
     *y += alpha * (hsum_pd(sum) + t);
 }
 
-// ============================================================
-// Process a contiguous range of rows [start_row, end_row)
-// ============================================================
 static inline void process_row_range(
     int start_row, int end_row, int cols,
     double alpha,
@@ -202,13 +182,9 @@ static inline void process_row_range(
     }
 }
 
-// ============================================================
-// Main OpenMP GEMV
-//
 // Uses a single omp parallel region with manual row division
 // instead of parallel for — avoids per-iteration OMP overhead.
 // Thread boundaries aligned to 4-row groups for SIMD efficiency.
-// ============================================================
 HOT void gemv_avx_fma_v3_omp(int rows, int cols, double alpha,
                               const double* __restrict A,
                               const double* __restrict x,
@@ -226,7 +202,7 @@ HOT void gemv_avx_fma_v3_omp(int rows, int cols, double alpha,
 
     size_t total_elements = (size_t)rows * cols;
 
-    // Serial fallback: too small (thread overhead) or too large (memory-bound)
+    // too small (thread overhead) or too large (memory-bound)
     if (rows < MIN_ROWS_FOR_PARALLEL ||
         total_elements < MIN_ELEMENTS_FOR_PARALLEL ||
         total_elements > MAX_ELEMENTS_FOR_PARALLEL) {
@@ -234,7 +210,6 @@ HOT void gemv_avx_fma_v3_omp(int rows, int cols, double alpha,
         return;
     }
 
-    // Single parallel region, manual work division
     #pragma omp parallel
     {
         int nt = omp_get_num_threads();

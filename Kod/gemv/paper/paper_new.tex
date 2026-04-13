@@ -1,44 +1,52 @@
 % Paper: Optimized GEMV Kernel for AMD Zen 3
-% Format: LNCS (Springer Lecture Notes in Computer Science)
-\documentclass[runningheads]{llncs}
+% Format: FedCSIS / IEEEtran
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
 
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
+% This package serves to balance the column lengths on the last page of the document.
+\usepackage{pbalance}
+
+%% to enable \thank command
+\IEEEoverridecommandlockouts
+%% The usage of the following packages is recommended
+%% to insert graphics
 \usepackage{graphicx}
-\usepackage{amsmath,amssymb}
+% to typeset algorithms
+\usepackage{algorithmic}
+\usepackage{algorithm}
+% to typeset code fragments
+\usepackage{minted}
+% to make an accent \k be available
+\usepackage[OT4,T1]{fontenc}
+% provides various features to facilitate writing math formulas and to improve the typographical quality of their output.
+\usepackage[cmex10]{amsmath}
+\interdisplaylinepenalty=2500
+\usepackage{amssymb}
 \usepackage{booktabs}
-\usepackage{listings}
-\usepackage{xcolor}
+% for urls typesetting and breaking
+\usepackage{url}
 \usepackage{hyperref}
+% for vertical merging table cells
 \usepackage{multirow}
 
-\lstdefinestyle{cstyle}{
-  language=C,
-  basicstyle=\ttfamily\scriptsize,
-  keywordstyle=\color{blue}\bfseries,
-  commentstyle=\color{gray},
-  stringstyle=\color{red},
-  numbers=left,
-  numberstyle=\tiny\color{gray},
-  stepnumber=1,
-  numbersep=5pt,
-  frame=single,
-  breaklines=true,
-  columns=fullflexible,
-  morekeywords={__m256d,__m128d,__restrict}
-}
-\lstset{style=cstyle,captionpos=b}
-
-\begin{document}
 
 \title{High-Performance GEMV on AMD Zen~3 via Architecture-Specific AVX2/FMA Optimization}
-\titlerunning{High-Performance GEMV on AMD Zen~3}
 
-\author{Rafa{\l} Lenart\orcidID{0009-0007-8389-7835}\inst{1}}
-\authorrunning{R. Lenart}
-\institute{Maria Curie-Sk{\l}odowska University, Lublin, Poland\\
-\email{307726@office.umcs.pl}}
+\author{
+\IEEEauthorblockN{Rafa{\l} Lenart}
+\IEEEauthorblockA{0009-0007-8389-7835\\
+Maria Curie-Sk{\l}odowska University\\
+Lublin, Poland\\
+Email: 307726@office.umcs.pl}
+\and
+\IEEEauthorblockN{Beata Bylina, Jaros{\l}aw Bylina}
+\IEEEauthorblockA{0000-0002-1327-9747\\0000-0002-0319-2525\\
+Maria Curie-Sk{\l}odowska University\\
+Lublin, Poland}
+}
 
+
+\begin{document}
 \maketitle
 
 \begin{abstract}
@@ -57,24 +65,26 @@ $3.22\times$ speedup over OpenBLAS on small matrices.
 We analyse why dispatch overhead, suboptimal accumulator strategies, and generic
 design choices in general-purpose BLAS libraries leave performance gains available in
 architecture-specific workloads.
-
-\keywords{GEMV \and BLAS \and AVX2 \and FMA \and AMD Zen~3 \and SIMD \and OpenMP}
 \end{abstract}
+
+\begin{IEEEkeywords}
+GEMV, BLAS, AVX2, FMA, AMD Zen~3, SIMD, OpenMP
+\end{IEEEkeywords}
 
 
 %=============================================================
 \section{Introduction}
 %=============================================================
 
-The Basic Linear Algebra Subprograms (BLAS)\cite{blas} are a widely adopted set of standardized interfaces
+\IEEEPARstart{T}{he} Basic Linear Algebra Subprograms (BLAS)\cite{blas} are a widely adopted set of standardized interfaces
 for vector (Level-1), matrix-vector (Level-2), and matrix-matrix (Level-3) operations. Among these, the Level-2
 BLAS operation GEMV (General Matrix-Vector Multiplication) computes
 $\mathbf{y} \leftarrow \alpha A\mathbf{x} + \beta\mathbf{y}.$
 In computational science, GEMV serves as a core subprogram in a broad range of algorithms, including:
 \begin{enumerate}
-  \item Dense matrix factorizations such as Householder QR and Hessenberg reduction\cite{golub2013}.
+  \item Dense matrix factorizations such as Householder QR and Hessenberg reduction\cite{golub2013}, where each step of the unblocked algorithm applies a Householder reflector via a GEMV on the trailing submatrix.
   \item Token generation in Large Language Models (LLMs), where each decoding step reduces to a sequence of GEMV operations.\cite{waferllm}
-  \item Recurrent neural network (RNN/LSTM) inference\cite{grnn}, where each step performs dense matrix--vector multiplications with the weight matrices.
+  \item Recurrent neural network (RNN/LSTM) inference\cite{grnn}, where each time step performs dense matrix--vector multiplications with the weight matrices.
 \end{enumerate}
 
 GEMV is fundamentally memory-bound. For an
@@ -162,8 +172,8 @@ tables\cite{fog2011instruction} and microarchitecture guide\cite{fog2017microarc
       4.4\ \text{GHz} = 70.4\ \text{GFLOPS/core}$ at maximum boost clock.
       This value is the theoretical peak.
 \item \textbf{Memory bandwidth:} The Ryzen~5~5600 uses a DDR4 memory controller.
-      Our test system is equipped with DDR4 3200 MT/s CL16 modules, 
-      providing a theoretical peak of 51.2 GB/s in dual-channel mode. 
+      Our test system is equipped with DDR4 3200 MT/s CL16 modules,
+      providing a theoretical peak of 51.2 GB/s in dual-channel mode.
       This value was calculated using an online tool.\cite{ramcalc}
 \end{itemize}
 
@@ -190,12 +200,12 @@ cycle at the sustained core frequency of 4.4\,GHz:
       the \textit{bandwidth} tool by Zack Smith~\cite{bandwidth} on sequential
       256-bit reads. Buffer sizes in the L3-resident range (1\,MB--16\,MB)
       yielded $\sim$106\,GB/s sustained read bandwidth. The raw measurement
-      output is shown in Figure~\ref{fig:bandwidth}.
+      output is shown in Fig.~\ref{fig:bandwidth}.
 \item \textbf{DRAM:} DDR4-3200 dual-channel provides
       $3200 \times 8 \times 2 = 51.2$\,GB/s theoretical. The
       \textit{bandwidth} microbenchmark reports $\sim$42\,GB/s for
       sequential 256-bit reads from a single core
-      (Figure~\ref{fig:bandwidth}), but GEMV's highly regular streaming
+      (Fig.~\ref{fig:bandwidth}), but GEMV's highly regular streaming
       access pattern enables more effective hardware prefetching; our
       measured GEMV throughput on DRAM-resident data
       (Section~\ref{sec:results}) is consistent with the full 51.2\,GB/s
@@ -206,7 +216,7 @@ as $\text{BW} \times \text{OI}$ (e.g., $267 \times 0.25 = 66.75$~GFLOPS for
 L1d). Table~\ref{tab:ceilings} summarizes these values.
 
 
-\begin{table}[t]
+\begin{table}[tbp]
 \centering
 \caption{Bandwidth ceilings and GEMV performance limits per memory level
 (OI~$= 0.25$~FLOP/byte).}
@@ -224,24 +234,25 @@ DRAM  & 51.2\,GB/s & 12.8\,GFLOPS & ---     \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
-\includegraphics[width=\linewidth]{bandwidth.png}
-\caption{Sequential 256-bit read bandwidth measured with the \textit{bandwidth}
-tool~\cite{bandwidth} on the AMD Ryzen~5~5600. The four plateaus correspond to
-L1d ($\sim$267\,GB/s), L2 ($\sim$132\,GB/s), L3 ($\sim$106\,GB/s), and DRAM
-($\sim$42\,GB/s).}
+\includegraphics[width=\linewidth]{bandwidth.pdf}
+\caption{Memory bandwidth measured with the \textit{bandwidth}
+tool~\cite{bandwidth} on the AMD Ryzen~5~5600 for sequential reads, writes,
+nontemporal (NT) operations, and copies at 64/128/256-bit widths. The shaded
+regions mark cache levels: L1d ($\sim$267\,GB/s peak read), L2 ($\sim$132\,GB/s),
+L3 ($\sim$106\,GB/s), and DRAM ($\sim$42\,GB/s).}
 \label{fig:bandwidth}
 \end{figure}
 
 When the working set fits in cache, the effective bandwidth increases
 dramatically, enabling much higher throughput for small to medium matrices
-than the DRAM-bound prediction would suggest. Figure~\ref{fig:roofline} shows the
+than the DRAM-bound prediction would suggest. Fig.~\ref{fig:roofline} shows the
 roofline diagram with our measured ZenGEMV performance for each benchmark preset,
 demonstrating how cache residency determines the reachable performance level.
 
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{roofline.pdf}
 \caption{Roofline model for Zen~3. Diagonal lines show memory bandwidth
@@ -278,7 +289,7 @@ library for dense matrix--vector multiplication on NVIDIA GPUs. Their
 double-buffering technique overlaps data movement with computation, and
 collaborative thread-block processing with atomic operations yields up to 60\%
 speedup over cuBLAS. A subset of the KBLAS kernels have been integrated into
-NVIDIA's cuBLAS. 
+NVIDIA's cuBLAS.
 
 Liang and Zhang\cite{liang2016gemv} specifically target Intel
 AVX processors, combining prefetching strategies, AVX intrinsics with loop
@@ -315,8 +326,8 @@ For each of the 4~rows, we maintain two independent accumulator registers
 The main loop processes 16~elements per iteration (4~AVX2 loads of 4~doubles
 each), alternating between accumulators~\texttt{a} and~\texttt{b}:
 
-\begin{lstlisting}[caption={Inner loop of ZenGEMV (abbreviated, showing 1 of 4
-rows).},label={lst:kernel}]
+\begin{figure}[tbp]
+\begin{minted}[fontsize=\scriptsize,frame=single,linenos]{c}
 for (; j + 15 < cols; j += 16) {
     __m256d x0 = _mm256_load_pd(&x[j]);
     __m256d x1 = _mm256_load_pd(&x[j + 4]);
@@ -333,7 +344,11 @@ for (; j + 15 < cols; j += 16) {
         _mm256_load_pd(&a0[j + 12]), x3, sum0b);
     // ... rows 1-3 follow the same pattern
 }
-\end{lstlisting}
+\end{minted}
+\caption{Inner loop of ZenGEMV (abbreviated, showing 1 of 4
+rows).}
+\label{lst:kernel}
+\end{figure}
 
 After the main loop, the dual accumulators are combined, and cleanup loops handle
 remaining elements in groups of~8, 4, and finally scalar elements.
@@ -357,7 +372,8 @@ row-parallel decomposition strategy. Rather than using \texttt{\#pragma omp
 parallel for}, which incurs per-iteration scheduling overhead, we use a single
 \texttt{\#pragma omp parallel} region with manual work division:
 
-\begin{lstlisting}[caption={Thread work division in ZenGEMV-P.},label={lst:omp}]
+\begin{figure}[tbp]
+\begin{minted}[fontsize=\scriptsize,frame=single,linenos]{c}
 #pragma omp parallel
 {
     int nt  = omp_get_num_threads();
@@ -370,7 +386,10 @@ parallel for}, which incurs per-iteration scheduling overhead, we use a single
     process_row_range(start*4, min(end*4, rows),
                       cols, alpha, A, x, y);
 }
-\end{lstlisting}
+\end{minted}
+\caption{Thread work division in ZenGEMV-P.}
+\label{lst:omp}
+\end{figure}
 
 Key design decisions:
 \begin{itemize}
@@ -385,7 +404,7 @@ Key design decisions:
       Above the upper threshold, DRAM bandwidth saturation makes additional
       threads counterproductive---measurements confirm that serial ZenGEMV
       outperforms the parallel variant in this regime, consistent with DRAM
-      bandwidth saturation predicted by the roofline model (Figure~\ref{fig:roofline}).
+      bandwidth saturation predicted by the roofline model (Fig.~\ref{fig:roofline}).
 \end{itemize}
 
 
@@ -409,11 +428,11 @@ OpenBLAS GEMV processing involves several layers of overhead before reaching the
       (ZEN through ZEN4) using the same shared microkernel
       \texttt{dgemv\_t\_microk\_haswell-4.c}, as determined by the preprocessor
       block in \texttt{kernel/x86\_64/dgemv\_t\_4.c}:
-      \begin{verbatim}
+      \begin{minted}[fontsize=\scriptsize]{c}
 #if defined(HASWELL) || defined(ZEN) || ...
 #include "dgemv_t_microk_haswell-4.c"
 #endif
-      \end{verbatim}
+      \end{minted}
       This kernel processes 4~rows simultaneously with a single accumulator
       per row, providing only 4~independent FMA chains. On Zen~3, 8~chains are needed for
       full utilization---this kernel leaves half the pipeline capacity unused.
@@ -498,7 +517,7 @@ kernel 6.18.7-zen1-1-zen, with the following configuration:
 Six benchmark presets cover different cache residency scenarios, summarized in
 Table~\ref{tab:presets}.
 
-\begin{table}[t]
+\begin{table}[tbp]
 \centering
 \caption{Benchmark presets with working set sizes and cache residency.
 Working set computed as $(MN + N + 2M) \times 8$~bytes.}
@@ -518,11 +537,11 @@ Tall   & 8192 &  256 &  16.1\,MB  & L3/DRAM \\
 \end{tabular}
 \end{table}
 
-Figure~\ref{fig:1t} shows single-threaded performance across all presets.
+Fig.~\ref{fig:1t} shows single-threaded performance across all presets.
 Table~\ref{tab:1t} provides detailed numerical results. The speedup columns
 show the ratio of ZenGEMV performance to each library.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{single_threaded.pdf}
 \caption{Single-threaded GEMV performance comparison. Annotations above ZenGEMV
@@ -530,23 +549,25 @@ bars show throughput (GFLOPS) and speedup relative to OpenBLAS.}
 \label{fig:1t}
 \end{figure}
 
-\begin{table}[t]
+\begin{table}[tbp]
 \centering
 \caption{Single-threaded GEMV performance (median GFLOPS, 5~runs). Speedup
 columns show ZenGEMV divided by the respective library's throughput.}
 \label{tab:1t}
-\begin{tabular}{@{}l r r r r r@{}}
+\begin{tabular}{@{}l rrr rr@{}}
 \toprule
-\textbf{Preset} & \textbf{ZenGEMV} & \textbf{OpenBLAS} & \textbf{AOCL-BLAS} &
-\textbf{ZenGEMV /} & \textbf{ZenGEMV /} \\
-& & & & \textbf{OpenBLAS} & \textbf{AOCL-BLAS} \\
+ & \textbf{Zen-} & \textbf{Open-} & \textbf{AOCL-} &
+\multicolumn{2}{c}{\textbf{Speedup}} \\
+\cmidrule(lr){5-6}
+\textbf{Preset} & \textbf{GEMV} & \textbf{BLAS} & \textbf{BLAS} &
+\textbf{vs.\ OB} & \textbf{vs.\ AB} \\
 \midrule
-Tiny   & 41.13 & 29.96 & 34.37 & $1.37\times$ & $1.20\times$ \\
-Small  & 26.99 & 23.65 & 23.12 & $1.14\times$ & $1.17\times$ \\
-Medium & 22.92 & 22.79 & 23.72 & $1.01\times$ & $0.97\times$ \\
-Large  & 13.11 & 11.71 & 12.32 & $1.12\times$ & $1.06\times$ \\
-Wide   & 22.85 & 23.69 & 17.38 & $0.96\times$ & $1.31\times$ \\
-Tall   & 23.55 & 22.30 & 22.78 & $1.06\times$ & $1.03\times$ \\
+Tiny   & 41.13 & 29.96 & 34.37 & 1.37$\times$ & 1.20$\times$ \\
+Small  & 26.99 & 23.65 & 23.12 & 1.14$\times$ & 1.17$\times$ \\
+Medium & 22.92 & 22.79 & 23.72 & 1.01$\times$ & 0.97$\times$ \\
+Large  & 13.11 & 11.71 & 12.32 & 1.12$\times$ & 1.06$\times$ \\
+Wide   & 22.85 & 23.69 & 17.38 & 0.96$\times$ & 1.31$\times$ \\
+Tall   & 23.55 & 22.30 & 22.78 & 1.06$\times$ & 1.03$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -572,10 +593,10 @@ consistent with the DRAM roofline prediction of $\sim$12.8~GFLOPS
 (Table~\ref{tab:ceilings}). At this point, memory bandwidth is the bottleneck
 and kernel optimizations yield diminishing returns.
 
-Figure~\ref{fig:mt} shows multi-threaded performance with 6~physical cores.
+Fig.~\ref{fig:mt} shows multi-threaded performance with 6~physical cores.
 Table~\ref{tab:mt} provides numerical details.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{multi_threaded.pdf}
 \caption{Multi-threaded GEMV performance (6 physical cores). Annotations above
@@ -583,23 +604,25 @@ ZenGEMV-P bars show throughput (GFLOPS) and speedup relative to OpenBLAS.}
 \label{fig:mt}
 \end{figure}
 
-\begin{table}[t]
+\begin{table}[tbp]
 \centering
 \caption{Multi-threaded GEMV performance (median GFLOPS, 6~cores, 5~runs).
 Speedup columns show ZenGEMV-P divided by each library.}
 \label{tab:mt}
-\begin{tabular}{@{}l r r r r r@{}}
+\begin{tabular}{@{}l rrr rr@{}}
 \toprule
-\textbf{Preset} & \textbf{ZenGEMV-P} & \textbf{OpenBLAS} & \textbf{AOCL-BLAS} &
-\textbf{ZenGEMV-P /} & \textbf{ZenGEMV-P /} \\
-& & & & \textbf{OpenBLAS} & \textbf{AOCL-BLAS} \\
+ & \textbf{Zen-} & \textbf{Open-} & \textbf{AOCL-} &
+\multicolumn{2}{c}{\textbf{Speedup}} \\
+\cmidrule(lr){5-6}
+\textbf{Preset} & \textbf{GEMV-P} & \textbf{BLAS} & \textbf{BLAS} &
+\textbf{vs.\ OB} & \textbf{vs.\ AB} \\
 \midrule
-Tiny   &  39.57 & 28.71 &  33.30 & $1.38\times$ & $1.19\times$ \\
-Small  &  77.20 & 23.96 &  71.85 & $3.22\times$ & $1.07\times$ \\
-Medium & 100.88 & 97.74 & 100.58 & $1.03\times$ & $1.00\times$ \\
-Large  &  12.62 &  8.38 &   7.59 & $1.51\times$ & $1.66\times$ \\
-Wide   &  99.56 & 90.13 &  68.66 & $1.10\times$ & $1.45\times$ \\
-Tall   & 100.73 & 96.35 & 100.69 & $1.05\times$ & $1.00\times$ \\
+Tiny   &  39.57 & 28.71 &  33.30 & 1.38$\times$ & 1.19$\times$ \\
+Small  &  77.20 & 23.96 &  71.85 & 3.22$\times$ & 1.07$\times$ \\
+Medium & 100.88 & 97.74 & 100.58 & 1.03$\times$ & 1.00$\times$ \\
+Large  &  12.62 &  8.38 &   7.59 & 1.51$\times$ & 1.66$\times$ \\
+Wide   &  99.56 & 90.13 &  68.66 & 1.10$\times$ & 1.45$\times$ \\
+Tall   & 100.73 & 96.35 & 100.69 & 1.05$\times$ & 1.00$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -637,7 +660,7 @@ throughput in GFLOPS and OI is the operational intensity from
 Equation~(\ref{eq:ai}). The utilization percentage is the ratio of achieved
 bandwidth to the practical ceiling at the dominant cache level.
 
-\begin{table}[t]
+\begin{table*}[tbp]
 \centering
 \caption{Achieved memory bandwidth and utilization efficiency for
 single-threaded GEMV. Achieved BW derived as
@@ -664,9 +687,9 @@ Wide   & L3   & 106  &  91.8 & 86.6 &  95.1 & 89.7 &  69.8 & 65.8 \\
 Tall   & L3   & 106  &  94.9 & 89.5 &  89.9 & 84.8 &  91.8 & 86.6 \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-\paragraph{Bandwidth efficiency across cache levels.}
+\textbf{Bandwidth efficiency across cache levels.}
 ZenGEMV's bandwidth utilization increases with cache level depth.
 At L1d (tiny), only 64.5\% of the 267\,GB/s ceiling is reached.
 The gap is attributable to a couple factors. L1d bandwidth is shared
@@ -691,7 +714,7 @@ the matrix remains L3-resident, contributing partial cache reuse above
 the pure DRAM bandwidth. Net of this effect, the kernel effectively
 saturates the DDR4-3200 memory controller.
 
-\paragraph{Cross-implementation comparison.}
+\textbf{Cross-implementation comparison.}
 At L1d, ZenGEMV's 64.5\% substantially exceeds OpenBLAS (47.0\%) and
 AOCL-BLAS (53.9\%), confirming that dispatch overhead consumes a
 disproportionate fraction of the available bandwidth window at small
@@ -706,7 +729,7 @@ At DRAM, the performance difference becomes 13.1 vs.\ 11.7 vs.\
 physical bandwidth limit---kernel optimizations yield lesser returns
 once DRAM bandwidth is the binding constraint.
 
-\paragraph{Roofline model validation.}
+\textbf{Roofline model validation.}
 The bandwidth utilization data confirms that GEMV is memory-bound across
 all preset sizes, as predicted by its operational intensity of
 $\sim$0.25\,FLOP/byte---well below the ridge point of the Zen~3
@@ -783,27 +806,26 @@ arbitrary memory layouts and scaling parameters.
 \begin{thebibliography}{99}
 
 \bibitem{blas}
-Blackford, L.S., Petitet, A., Pozo, R., et al.:
-An updated set of basic linear algebra subprograms (BLAS).
-ACM Trans. Math. Softw. \textbf{28}(2), 135--151 (2002)
+L.~S. Blackford, A. Petitet, R. Pozo, et al.,
+``An updated set of basic linear algebra subprograms (BLAS),''
+\textit{ACM Trans. Math. Softw.,} vol.~28, no.~2, pp.~135--151, 2002.
 
 \bibitem{golub2013}
-Golub, G.H., Van Loan, C.F.:
-Matrix Computations, 4th edn.
-Johns Hopkins University Press, Baltimore (2013).
-ISBN 978-1-4214-0794-4
+G.~H. Golub and C.~F. Van~Loan,
+\textit{Matrix Computations,} 4th~ed.
+Baltimore: Johns Hopkins University Press, 2013.
 
 \bibitem{waferllm}
-He, C., Huang, Y., Mu, P., Miao, Z., Xue, J., Ma, L., et al.:
-WaferLLM: Large Language Model Inference at Wafer Scale.
-arXiv:2502.04563 [cs.LG] (2025).
+C. He, Y. Huang, P. Mu, Z. Miao, J. Xue, L. Ma, et al.,
+``WaferLLM: Large language model inference at wafer scale,''
+arXiv:2502.04563 [cs.LG], 2025.
 \url{https://arxiv.org/abs/2502.04563}
 
 \bibitem{grnn}
-Holmes, C., Mawhirter, D., He, Y., Yan, F., Wu, B.:
-GRNN: Low-Latency and Scalable RNN Inference on GPUs.
-In: Proceedings of the Fourteenth EuroSys Conference (EuroSys'19),
-pp.~41:1--41:16. ACM, New York (2019).
+C. Holmes, D. Mawhirter, Y. He, F. Yan, and B. Wu,
+``GRNN: Low-latency and scalable RNN inference on GPUs,''
+in \textit{Proc. 14th EuroSys Conf. (EuroSys'19),}
+New York: ACM, 2019, pp.~41:1--41:16.
 \url{https://doi.org/10.1145/3302424.3303949}
 
 \bibitem{openblas}
@@ -812,97 +834,114 @@ OpenBLAS: An optimized BLAS library.
 \url{https://github.com/OpenMathLib/OpenBLAS}
 
 \bibitem{aoclblas}
-AMD: AOCL-BLAS (BLIS fork with AMD optimizations), version 5.2.0.
+AMD, ``AOCL-BLAS (BLIS fork with AMD optimizations),'' version 5.2.0.
 \url{https://github.com/amd/blis}
 
 \bibitem{avx2}
-Gepner, P.:
-Using AVX2 Instruction Set to Increase Performance of High Performance Computing Code.
-Computing and Informatics \textbf{36}(5), 1001--1018 (2017).
+P. Gepner,
+``Using AVX2 instruction set to increase performance of high performance computing code,''
+\textit{Computing and Informatics,} vol.~36, no.~5, pp.~1001--1018, 2017.
 \url{https://doi.org/10.4149/cai_2017_5_1001}
 
 \bibitem{fma}
-Zhang, H., Chen, D., Ko, S.B.:
-Efficient Multiple-Precision Floating-Point Fused Multiply-Add with Mixed-Precision Support.
-IEEE Trans. Comput. \textbf{68}(7), 1035--1048 (2019).
+H. Zhang, D. Chen, and S.~B. Ko,
+``Efficient multiple-precision floating-point fused multiply-add with mixed-precision support,''
+\textit{IEEE Trans. Comput.,} vol.~68, no.~7, pp.~1035--1048, 2019.
 \url{https://doi.org/10.1109/TC.2019.2895031}
 
 \bibitem{zen3}
-Evers, M., Barnes, L., Clark, M.:
-The AMD Next-Generation ``Zen 3'' Core.
-IEEE Micro \textbf{42}(3), 7--12 (2022).
+M. Evers, L. Barnes, and M. Clark,
+``The AMD next-generation `Zen 3' core,''
+\textit{IEEE Micro,} vol.~42, no.~3, pp.~7--12, 2022.
 \url{https://doi.org/10.1109/MM.2022.3152788}
 
 \bibitem{roofline}
-Williams, S., Waterman, A., Patterson, D.A.:
-Roofline: an insightful visual performance model for multicore architectures.
-Commun. ACM \textbf{52}, 65--76 (2009).
+S. Williams, A. Waterman, and D.~A. Patterson,
+``Roofline: an insightful visual performance model for multicore architectures,''
+\textit{Commun. ACM,} vol.~52, pp.~65--76, 2009.
 \url{https://doi.org/10.1145/1498765.1498785}
 
 \bibitem{amdsog}
-Advanced Micro Devices:
-Software Optimization Guide for AMD EPYC\texttrademark{} 7003 Series Processors
-(Family 19h Models 00h--0Fh), rev. 3.00.
+Advanced Micro Devices,
+``Software optimization guide for AMD EPYC 7003 series processors
+(family 19h models 00h--0Fh),'' rev. 3.00.
 \url{https://kib.kiev.ua/x86docs/AMD/Optimization/56665_3.00_Software\%20Optimization\%20Guide\%20for\%20AMD\%20Family\%2019h\%20Processors\%20\%28PUB\%29.pdf}
 
 \bibitem{fog2011instruction}
-Fog, A.:
-Instruction tables: Lists of instruction latencies, throughputs and micro-operation breakdowns
-for Intel, AMD, and VIA CPUs (2011, last updated September~20, 2025).
+A. Fog,
+``Instruction tables: lists of instruction latencies, throughputs and micro-operation breakdowns
+for Intel, AMD, and VIA CPUs,'' 2011, last updated Sep.~20, 2025.
 \url{https://www.agner.org/optimize/instruction_tables.pdf}
 
 \bibitem{fog2017microarchitecture}
-Fog, A.:
-The microarchitecture of Intel, AMD, and VIA CPUs: An optimization guide for assembly programmers
-and compiler makers (2017, last updated December~15, 2025).
+A. Fog,
+``The microarchitecture of Intel, AMD, and VIA CPUs: an optimization guide for assembly programmers
+and compiler makers,'' 2017, last updated Dec.~15, 2025.
 \url{https://www.agner.org/optimize/microarchitecture.pdf}
 
 \bibitem{ramcalc}
-FinlayDaG33k:
-RAM Bandwidth Calculator.
+FinlayDaG33k,
+``RAM Bandwidth Calculator.''
 \url{https://edu.finlaydag33k.nl/calculating%20ram%20bandwidth/},
 \url{https://gitlab.com/FinlayDaG33k/ram-calculator}
 
 \bibitem{bandwidth}
-Smith, Z.:
-bandwidth: A memory bandwidth benchmark.
+Z. Smith,
+``bandwidth: a memory bandwidth benchmark.''
 \url{https://zs3.me/bandwidth}
 
 \bibitem{gotoblas}
-Goto, K., van de Geijn, R.A.:
-Anatomy of high-performance matrix multiplication.
-ACM Trans. Math. Softw. \textbf{34}(3), 12 (2008).
+K. Goto and R.~A. van~de~Geijn,
+``Anatomy of high-performance matrix multiplication,''
+\textit{ACM Trans. Math. Softw.,} vol.~34, no.~3, p.~12, 2008.
 \url{https://doi.org/10.1145/1356052.1356053}
 
 \bibitem{blis}
-Van Zee, F.G., van de Geijn, R.A.:
-BLIS: A Framework for Rapidly Instantiating BLAS Functionality.
-ACM Trans. Math. Softw. \textbf{41}(3), 14 (2015).
+F.~G. Van~Zee and R.~A. van~de~Geijn,
+``BLIS: A framework for rapidly instantiating BLAS functionality,''
+\textit{ACM Trans. Math. Softw.,} vol.~41, no.~3, p.~14, 2015.
 \url{https://doi.org/10.1145/2764454}
 
 \bibitem{atlas}
-Whaley, R.C., Dongarra, J.J.:
-Automatically Tuned Linear Algebra Software.
-In: Proceedings of the 1998 ACM/IEEE Conference on Supercomputing (SC'98).
-IEEE (1998).
+R.~C. Whaley and J.~J. Dongarra,
+``Automatically tuned linear algebra software,''
+in \textit{Proc. 1998 ACM/IEEE Conf. Supercomputing (SC'98).}
+IEEE, 1998.
 \url{https://doi.org/10.1109/SC.1998.10004}
 
 \bibitem{hassan2017gemv}
-Hassan, S.A., Mahmoud, M.M., Hemeida, A.M., Saber, M.A.:
-Effective Implementation of Matrix--Vector Multiplication on Intel's AVX Multicore Processor.
-Comput. Lang. Syst. Struct. \textbf{51}, 158--175 (2017).
+S.~A. Hassan, M.~M. Mahmoud, A.~M. Hemeida, and M.~A. Saber,
+``Effective implementation of matrix--vector multiplication on Intel's AVX multicore processor,''
+\textit{Comput. Lang. Syst. Struct.,} vol.~51, pp.~158--175, 2017.
 \url{https://doi.org/10.1016/j.cl.2017.06.003}
 
 \bibitem{gccmanual}
-Free Software Foundation:
-Using the GNU Compiler Collection (GCC), version 15.2.0 (2025).
+Free Software Foundation,
+``Using the GNU Compiler Collection (GCC),'' version 15.2.0, 2025.
 \url{https://gcc.gnu.org/onlinedocs/gcc-15.2.0/gcc/}
 
 \bibitem{chandra2001parallel}
-Chandra, R., Dagum, L., Kohr, D., Menon, R., Maydan, D., McDonald, J.:
-Parallel Programming in OpenMP.
-Morgan Kaufmann (2001)
+R. Chandra, L. Dagum, D. Kohr, R. Menon, D. Maydan, and J. McDonald,
+\textit{Parallel Programming in OpenMP.}
+Morgan Kaufmann, 2001.
+
+\bibitem{kblas}
+A. Abdelfattah, D. Keyes, and H. Ltaief,
+``KBLAS: An optimized library for dense matrix-vector multiplication on GPU accelerators,''
+\textit{ACM Trans. Math. Softw.,} vol.~42, no.~3, p.~18, 2016.
+\url{https://doi.org/10.1145/2818311}
+
+\bibitem{liang2016gemv}
+Y. Liang and Y. Zhang,
+``GEMV optimization on Intel AVX processor,''
+in \textit{Proc. IEEE Int. Conf. High Performance Computing and Communications,} 2016.
+
+\bibitem{singh2021gemv}
+A.~R. Singh and C. Bassoy,
+``Cache-blocked dense matrix-vector multiplication with FMA on x86 architectures,''
+in \textit{Proc. Int. Conf. Algorithms and Architectures for Parallel Processing,} 2021.
 
 \end{thebibliography}
+
 
 \end{document}

@@ -14,7 +14,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} \
     -mavx2 \
     -mfma \
     -funroll-loops \
-    -ffast-math \
     -flto \
     -fno-plt")
 
@@ -31,10 +30,20 @@ add_library(gemv_impl STATIC
 # Link OpenMP to the library
 target_link_libraries(gemv_impl PUBLIC OpenMP::OpenMP_C)
 
+set(OPENBLAS_ROOT ${CMAKE_SOURCE_DIR}/openblas_install)
+
 add_executable(benchmark benchmark.c)
+target_include_directories(benchmark PRIVATE ${OPENBLAS_ROOT}/include)
+target_link_directories(benchmark PRIVATE ${OPENBLAS_ROOT}/lib)
 target_link_libraries(benchmark PRIVATE gemv_impl openblas m dl)
+set_target_properties(benchmark PROPERTIES
+    BUILD_RPATH ${OPENBLAS_ROOT}/lib
+    INSTALL_RPATH ${OPENBLAS_ROOT}/lib)
 
 add_executable(tuning tuning.c)
+target_include_directories(tuning PRIVATE ${OPENBLAS_ROOT}/include)
+target_link_directories(tuning PRIVATE ${OPENBLAS_ROOT}/lib)
 target_link_libraries(tuning PRIVATE openblas m)
-
-include_directories(/usr/include)
+set_target_properties(tuning PROPERTIES
+    BUILD_RPATH ${OPENBLAS_ROOT}/lib
+    INSTALL_RPATH ${OPENBLAS_ROOT}/lib)

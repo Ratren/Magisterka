@@ -1,0 +1,26 @@
+[dot_l1_fit]
+kernel = dot
+size = 2048
+iterations = 1000000
+
+[gemv_small]
+kernel = gemv
+rows = 256
+cols = 256
+iterations = 50000
+
+[gemm_small]
+kernel = gemm
+m = 256
+n = 256
+k = 256
+iterations = 100
+
+[conv_small]
+kernel = conv
+cin = 64
+h = 56
+w = 56
+k = 3
+cout = 64
+iterations = 100

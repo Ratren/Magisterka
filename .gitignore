@@ -70,6 +70,19 @@ CMakeUserPresets.json
 
 .cache/
 build/
+
+# vendored BLAS sources/builds
+Kod/blis_install/
+Kod/blis_src/
+Kod/openblas_install/
+Kod/openblas_src/
+
+# paper artifacts and LaTeX template
+Kod/gemv/paper/
+Kod/gemv/LaTeX_template/
+
+# benchmark suite outputs
+Kod/benchmark_suite/results/
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

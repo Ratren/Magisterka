@@ -3,10 +3,8 @@ project(gemv_benchmark C)
 
 set(CMAKE_C_STANDARD 11)
 
-# Find OpenMP
 find_package(OpenMP REQUIRED)
 
-# Flagi zoptymalizowane dla AMD Ryzen 5 5600 (Zen 3)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} \
     -O3 \
     -march=znver3 \
@@ -17,6 +15,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} \
     -flto \
     -fno-plt")
 
+if(NOT TARGET common)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../common ${CMAKE_BINARY_DIR}/common)
+endif()
+
 add_library(gemv_impl STATIC
     gemv_naive.c
     gemv_simd.c
@@ -26,17 +28,16 @@ add_library(gemv_impl STATIC
     gemv_avx_fma_v3.c
     gemv_avx_fma_v3_omp.c
 )
-
-# Link OpenMP to the library
 target_link_libraries(gemv_impl PUBLIC OpenMP::OpenMP_C)
 
-set(OPENBLAS_ROOT ${CMAKE_SOURCE_DIR}/openblas_install)
+set(OPENBLAS_ROOT ${CMAKE_SOURCE_DIR}/../openblas_install)
 
-add_executable(benchmark benchmark.c)
-target_include_directories(benchmark PRIVATE ${OPENBLAS_ROOT}/include)
-target_link_directories(benchmark PRIVATE ${OPENBLAS_ROOT}/lib)
-target_link_libraries(benchmark PRIVATE gemv_impl openblas m dl)
-set_target_properties(benchmark PROPERTIES
+add_executable(gemv_benchmark benchmark.c)
+target_include_directories(gemv_benchmark PRIVATE ${OPENBLAS_ROOT}/include)
+target_link_directories(gemv_benchmark PRIVATE ${OPENBLAS_ROOT}/lib)
+target_link_libraries(gemv_benchmark PRIVATE gemv_impl common openblas)
+set_target_properties(gemv_benchmark PROPERTIES
+    OUTPUT_NAME benchmark
     BUILD_RPATH ${OPENBLAS_ROOT}/lib
     INSTALL_RPATH ${OPENBLAS_ROOT}/lib)
 

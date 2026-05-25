@@ -6,8 +6,8 @@ SCRIPT_DIR="$(dirname "$0")"
 cd "$SCRIPT_DIR/build"
 
 # Make BLIS available if installed locally
-if [ -d "$SCRIPT_DIR/blis_install/lib" ]; then
-    export LD_LIBRARY_PATH="$SCRIPT_DIR/blis_install/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+if [ -d "$SCRIPT_DIR/../blis_install/lib" ]; then
+    export LD_LIBRARY_PATH="$SCRIPT_DIR/../blis_install/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
 
 MODE="${1:-both}"

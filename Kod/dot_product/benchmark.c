@@ -4,106 +4,84 @@
 #include <math.h>
 #include <omp.h>
 #include "common.h"
-#include "gemv.h"
+#include "dot.h"
 #include "openblas/cblas.h"
 
 extern void openblas_set_num_threads(int num_threads);
 extern int  openblas_get_num_threads(void);
 extern void goto_set_num_threads(int num_threads);
 
-#define NUM_IMPLEMENTATIONS 9
+#define NUM_IMPLEMENTATIONS 6
 #define NUM_RUNS 5
 #define WARMUP_ITERATIONS 10
 
-typedef void (*gemv_func)(int, int, double, const double*, const double*, double, double*);
+typedef double (*dot_func)(const double*, const double*, size_t);
 
 typedef struct {
     const char* name;
-    gemv_func   func;
+    dot_func    func;
     double      runs[NUM_RUNS];
     double      median;
     double      min;
     double      max;
     double      stddev;
-    double      max_error;
+    double      abs_error;
 } Impl;
 
 typedef struct {
     const char* name;
-    int rows;
-    int cols;
-    int iterations;
+    size_t      n;
+    int         iterations;
 } BuiltinPreset;
 
 static BuiltinPreset builtin_presets[] = {
-    {"tiny",   64,   64,   5000000},
-    {"small",  256,  256,  200000},
-    {"medium", 1024, 1024, 10000},
-    {"large",  4096, 4096, 300},
-    {"wide",   256,  8192, 5000},
-    {"tall",   8192, 256,  5000},
+    {"l1_fit",  2048,        5000000},
+    {"l2_fit",  32768,       300000},
+    {"l3_fit",  2097152,     2000},
+    {"dram",    67108864,    50},
 };
 static const int num_builtin = sizeof(builtin_presets) / sizeof(builtin_presets[0]);
 
-typedef void (*blis_dgemv_f77_func)(const char*, const int*, const int*,
-                                    const double*, const double*, const int*,
-                                    const double*, const int*,
-                                    const double*, double*, const int*);
-static blis_dgemv_f77_func blis_dgemv_f77 = NULL;
+typedef double (*blis_ddot_f77_func)(const int*, const double*, const int*,
+                                     const double*, const int*);
+static blis_ddot_f77_func blis_ddot_f77 = NULL;
 
-static void openblas_wrapper(int rows, int cols, double alpha,
-                             const double* A, const double* x,
-                             double beta, double* y) {
-    cblas_dgemv(CblasRowMajor, CblasNoTrans, rows, cols, alpha,
-                A, cols, x, 1, beta, y, 1);
+static double openblas_wrapper(const double* a, const double* b, size_t n) {
+    return cblas_ddot((int)n, a, 1, b, 1);
 }
 
-static void blis_wrapper(int rows, int cols, double alpha,
-                         const double* A, const double* x,
-                         double beta, double* y) {
-    if (!blis_dgemv_f77) return;
-    char trans = 'T';
-    int m = cols, n = rows, lda = cols, incx = 1, incy = 1;
-    blis_dgemv_f77(&trans, &m, &n, &alpha, A, &lda, x, &incx, &beta, y, &incy);
+static double blis_wrapper(const double* a, const double* b, size_t n) {
+    if (!blis_ddot_f77) return 0.0;
+    int nn = (int)n, inc = 1;
+    return blis_ddot_f77(&nn, a, &inc, b, &inc);
 }
 
 static void gen_double_arr(double* arr, size_t n) {
     for (size_t i = 0; i < n; i++) arr[i] = ((double)rand() / RAND_MAX) * 2.0 - 1.0;
 }
 
-static double calc_max_error(const double* y1, const double* y2, int size) {
-    double max_err = 0.0;
-    for (int i = 0; i < size; i++) {
-        double err = fabs(y1[i] - y2[i]);
-        if (err > max_err) max_err = err;
-    }
-    return max_err;
-}
-
 #define BUDGET_PER_RUN_SEC 1.0
 #define MAX_SECONDS_PER_CALL 20.0
 
-static int measure_one(Impl* impl, int rows, int cols, int iterations,
-                       const double* A, const double* x,
-                       double* y, const double* y_ref,
-                       double alpha, double beta) {
-    double work = 2.0 * rows * cols;
+static int measure_one(Impl* impl, const double* a, const double* b,
+                       size_t n, int iterations, double ref) {
+    double work = 2.0 * (double)n;
     if (impl->median > 0.0) {
         double predicted = work / (impl->median * 1e9);
         if (predicted > MAX_SECONDS_PER_CALL) {
             impl->median = impl->min = impl->max = impl->stddev = 0.0;
-            impl->max_error = 0.0;
+            impl->abs_error = 0.0;
             return -1;
         }
     }
 
     double t_cal = now_seconds();
-    impl->func(rows, cols, alpha, A, x, beta, y);
+    double last = impl->func(a, b, n);
     double t_one = now_seconds() - t_cal;
 
     if (t_one > MAX_SECONDS_PER_CALL) {
         impl->median = impl->min = impl->max = impl->stddev = 0.0;
-        impl->max_error = calc_max_error(y, y_ref, rows);
+        impl->abs_error = fabs(last - ref);
         return 0;
     }
 
@@ -117,16 +95,14 @@ static int measure_one(Impl* impl, int rows, int cols, int iterations,
     else if (t_one > 0.5) runs = 2;
 
     int warmup = (t_one < 0.05) ? WARMUP_ITERATIONS : 0;
-    for (int w = 0; w < warmup; w++)
-        impl->func(rows, cols, alpha, A, x, beta, y);
+    for (int w = 0; w < warmup; w++) last = impl->func(a, b, n);
 
-    double total_flops = 2.0 * rows * cols;
+    double total_flops = 2.0 * (double)n;
     double min_g = 1e30, max_g = 0.0;
 
     for (int run = 0; run < runs; run++) {
         double t0 = now_seconds();
-        for (int i = 0; i < iters; i++)
-            impl->func(rows, cols, alpha, A, x, beta, y);
+        for (int i = 0; i < iters; i++) last = impl->func(a, b, n);
         double dt = now_seconds() - t0;
         double gflops = (total_flops * iters) / (dt * 1e9);
         impl->runs[run] = gflops;
@@ -139,33 +115,29 @@ static int measure_one(Impl* impl, int rows, int cols, int iterations,
     impl->min = min_g;
     impl->max = max_g;
     impl->stddev = (runs > 1) ? compute_stddev(impl->runs, runs, impl->median) : 0.0;
-    impl->max_error = calc_max_error(y, y_ref, rows);
+    impl->abs_error = fabs(last - ref);
     return 1;
 }
 
-static void run_case(int rows, int cols, int iterations, Impl* impls) {
-    double* A = (double*)aligned_alloc(32, (size_t)rows * cols * sizeof(double));
-    double* x = (double*)aligned_alloc(32, cols * sizeof(double));
-    double* y = (double*)aligned_alloc(32, rows * sizeof(double));
-    double* y_ref = (double*)aligned_alloc(32, rows * sizeof(double));
-    if (!A || !x || !y || !y_ref) { fprintf(stderr, "alloc failed\n"); exit(1); }
+static void run_case(size_t n, int iterations, Impl* impls) {
+    double* a = (double*)aligned_alloc(64, n * sizeof(double));
+    double* b = (double*)aligned_alloc(64, n * sizeof(double));
+    if (!a || !b) { fprintf(stderr, "alloc failed (n=%zu)\n", n); exit(1); }
 
     srand(42);
-    gen_double_arr(A, (size_t)rows * cols);
-    gen_double_arr(x, cols);
+    gen_double_arr(a, n);
+    gen_double_arr(b, n);
 
-    double alpha = 1.0, beta = 0.0;
-    memset(y_ref, 0, rows * sizeof(double));
-    openblas_wrapper(rows, cols, alpha, A, x, beta, y_ref);
+    double ref = openblas_wrapper(a, b, n);
 
     for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) {
         printf("  [%d/%d] %-20s", i + 1, NUM_IMPLEMENTATIONS, impls[i].name);
         fflush(stdout);
-        if (impls[i].func == blis_wrapper && !blis_dgemv_f77) {
+        if (impls[i].func == blis_wrapper && !blis_ddot_f77) {
             printf(" SKIPPED (BLIS not loaded)\n");
             continue;
         }
-        int ok = measure_one(&impls[i], rows, cols, iterations, A, x, y, y_ref, alpha, beta);
+        int ok = measure_one(&impls[i], a, b, n, iterations, ref);
         if (ok == -1) {
             printf(" SKIPPED (predicted > %.0fs based on prior preset)\n", (double)MAX_SECONDS_PER_CALL);
         } else if (ok == 0) {
@@ -176,13 +148,12 @@ static void run_case(int rows, int cols, int iterations, Impl* impls) {
         }
     }
 
-    free(A); free(x); free(y); free(y_ref);
+    free(a); free(b);
 }
 
-static void print_table(const Impl* impls, int rows, int cols) {
-    (void)rows; (void)cols;
+static void print_table(const Impl* impls) {
     double naive_g = impls[0].median;
-    double blas_g = impls[NUM_IMPLEMENTATIONS - 2].median;
+    double blas_g  = impls[NUM_IMPLEMENTATIONS - 2].median;
     printf("\n-------------------------------------------------------------------------------------\n");
     printf("%-20s | %6s | %6s | %11s | %8s | %7s | %s\n",
            "Implementacja", "Median", "StdDev", "Min-Max", "vs Naive", "vs BLAS", "Blad");
@@ -193,7 +164,7 @@ static void print_table(const Impl* impls, int rows, int cols) {
                impls[i].min, impls[i].max,
                impls[i].median / naive_g,
                impls[i].median / blas_g,
-               impls[i].max_error);
+               impls[i].abs_error);
     }
     printf("-------------------------------------------------------------------------------------\n");
 
@@ -209,12 +180,10 @@ static void print_table(const Impl* impls, int rows, int cols) {
         printf("\nNajlepsza: %s (%.2fx wolniejsza niz OpenBLAS)\n", impls[best].name, 1.0 / vs_blas);
 }
 
-static void snapshot(PresetResult* out, const char* name, int rows, int cols,
-                     const Impl* impls) {
+static void snapshot(PresetResult* out, const char* name, size_t n, const Impl* impls) {
     strncpy(out->name, name, sizeof(out->name) - 1);
     out->name[sizeof(out->name) - 1] = 0;
-    snprintf(out->params_json, sizeof(out->params_json),
-             "\"rows\": %d, \"cols\": %d", rows, cols);
+    snprintf(out->params_json, sizeof(out->params_json), "\"size\": %zu", n);
     out->num_impls = NUM_IMPLEMENTATIONS;
     out->impls = (ImplResult*)calloc(NUM_IMPLEMENTATIONS, sizeof(ImplResult));
     for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) {
@@ -223,17 +192,17 @@ static void snapshot(PresetResult* out, const char* name, int rows, int cols,
         out->impls[i].min = impls[i].min;
         out->impls[i].max = impls[i].max;
         out->impls[i].stddev = impls[i].stddev;
-        out->impls[i].max_error = impls[i].max_error;
+        out->impls[i].max_error = impls[i].abs_error;
     }
 }
 
-static void run_preset(const char* name, int rows, int cols, int iterations,
+static void run_preset(const char* name, size_t n, int iterations,
                        Impl* impls, PresetResult* out) {
-    printf("\n[ Preset: %s | %dx%d | %d iteracji ]\n\n", name, rows, cols, iterations);
+    printf("\n[ Preset: %s | n=%zu | %d iteracji ]\n\n", name, n, iterations);
     printf("Uruchamianie benchmarkow...\n");
-    run_case(rows, cols, iterations, impls);
-    print_table(impls, rows, cols);
-    if (out) snapshot(out, name, rows, cols, impls);
+    run_case(n, iterations, impls);
+    print_table(impls);
+    if (out) snapshot(out, name, n, impls);
 }
 
 static void print_summary(const PresetResult* results, int n) {
@@ -260,17 +229,17 @@ static void free_results(PresetResult* results, int n) {
 
 static void print_usage(const char* prog) {
     printf("Uzycie:\n");
-    printf("  %s                          - uruchamia preset 'medium'\n", prog);
+    printf("  %s                          - uruchamia preset 'l2_fit'\n", prog);
     printf("  %s <preset>                 - uruchamia wbudowany preset\n", prog);
     printf("  %s all                      - uruchamia wszystkie wbudowane presety\n", prog);
-    printf("  %s --preset-file <path>     - presety z pliku INI (kernel = gemv)\n", prog);
-    printf("  %s --custom <iter> <r> <c>  - parametry recznie\n", prog);
+    printf("  %s --preset-file <path>     - presety z pliku INI (kernel = dot)\n", prog);
+    printf("  %s --custom <iter> <size>   - parametry recznie\n", prog);
     printf("  %s [--json <path>] ...      - zapisz wyniki do JSON\n", prog);
     printf("\nWbudowane presety:\n");
     for (int i = 0; i < num_builtin; i++) {
-        printf("  %-8s - %dx%d, %d iteracji\n",
-               builtin_presets[i].name, builtin_presets[i].rows,
-               builtin_presets[i].cols, builtin_presets[i].iterations);
+        printf("  %-8s - n=%zu, %d iteracji\n",
+               builtin_presets[i].name, builtin_presets[i].n,
+               builtin_presets[i].iterations);
     }
 }
 
@@ -279,29 +248,27 @@ int main(int argc, char* argv[]) {
     openblas_set_num_threads(nthreads);
     goto_set_num_threads(nthreads);
     int has_blis = blis_loader_init(nthreads);
-    if (has_blis) blis_dgemv_f77 = (blis_dgemv_f77_func)blis_loader_sym("dgemv_");
+    if (has_blis) blis_ddot_f77 = (blis_ddot_f77_func)blis_loader_sym("ddot_");
 
     Impl impls[NUM_IMPLEMENTATIONS] = {
-        {"Naive",           gemv_naive,           {0}, 0, 0, 0, 0, 0},
-        {"SIMD",            gemv_simd,            {0}, 0, 0, 0, 0, 0},
-        {"SIMD + Prefetch", gemv_simd_prefetch,   {0}, 0, 0, 0, 0, 0},
-        {"AVX+FMA Blocked", gemv_avx_fma_blocked, {0}, 0, 0, 0, 0, 0},
-        {"AVX+FMA V2",      gemv_avx_fma_v2,      {0}, 0, 0, 0, 0, 0},
-        {"AVX+FMA V3",      gemv_avx_fma_v3,      {0}, 0, 0, 0, 0, 0},
-        {"AVX+FMA V3_OMP",  gemv_avx_fma_v3_omp,  {0}, 0, 0, 0, 0, 0},
-        {"OpenBLAS",        openblas_wrapper,     {0}, 0, 0, 0, 0, 0},
-        {"BLIS",            blis_wrapper,         {0}, 0, 0, 0, 0, 0},
+        {"Naive",         dot_naive,         {0}, 0, 0, 0, 0, 0},
+        {"SIMD",          dot_simd,          {0}, 0, 0, 0, 0, 0},
+        {"SIMD MultiAcc", dot_simd_multiacc, {0}, 0, 0, 0, 0, 0},
+        {"OMP",           dot_omp,           {0}, 0, 0, 0, 0, 0},
+        {"OpenBLAS",      openblas_wrapper,  {0}, 0, 0, 0, 0, 0},
+        {"BLIS",          blis_wrapper,      {0}, 0, 0, 0, 0, 0},
     };
     char openblas_name[32], blis_name_buf[32];
     snprintf(openblas_name, sizeof(openblas_name), "OpenBLAS (%dT)", nthreads);
     snprintf(blis_name_buf, sizeof(blis_name_buf), "BLIS (%dT)%s",
-             nthreads, blis_dgemv_f77 ? "" : " N/A");
-    impls[7].name = openblas_name;
-    impls[8].name = blis_name_buf;
+             nthreads, blis_ddot_f77 ? "" : " N/A");
+    impls[4].name = openblas_name;
+    impls[5].name = blis_name_buf;
 
     const char* json_path = NULL;
     const char* preset_file = NULL;
-    int custom_iter = 0, custom_rows = 0, custom_cols = 0;
+    int custom_iter = 0;
+    size_t custom_n = 0;
     int run_all = 0;
     const char* single_preset = NULL;
 
@@ -310,10 +277,9 @@ int main(int argc, char* argv[]) {
             json_path = argv[++i];
         } else if (strcmp(argv[i], "--preset-file") == 0 && i + 1 < argc) {
             preset_file = argv[++i];
-        } else if (strcmp(argv[i], "--custom") == 0 && i + 3 < argc) {
+        } else if (strcmp(argv[i], "--custom") == 0 && i + 2 < argc) {
             custom_iter = atoi(argv[++i]);
-            custom_rows = atoi(argv[++i]);
-            custom_cols = atoi(argv[++i]);
+            custom_n = (size_t)strtoull(argv[++i], NULL, 10);
         } else if (strcmp(argv[i], "all") == 0) {
             run_all = 1;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -325,7 +291,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    print_system_header("GEMV Benchmark");
+    print_system_header("Dot Product Benchmark");
     printf("Threads: OMP=%d, OpenBLAS=%d, BLIS=%s\n",
            omp_get_max_threads(), openblas_get_num_threads(),
            has_blis ? "loaded" : "not found");
@@ -341,30 +307,29 @@ int main(int argc, char* argv[]) {
         results = (PresetResult*)calloc(total, sizeof(PresetResult));
         for (Preset* p = head; p; p = p->next) {
             const char* k = preset_get(p, "kernel");
-            if (!k || strcmp(k, "gemv") != 0) continue;
-            int rows = preset_get_int(p, "rows", 0);
-            int cols = preset_get_int(p, "cols", 0);
+            if (!k || strcmp(k, "dot") != 0) continue;
+            size_t n = (size_t)preset_get_long(p, "size", 0);
             int iter = preset_get_int(p, "iterations", 0);
-            if (rows <= 0 || cols <= 0 || iter <= 0) {
-                fprintf(stderr, "preset '%s': rows/cols/iterations missing or invalid\n", p->name);
+            if (n == 0 || iter <= 0) {
+                fprintf(stderr, "preset '%s': size/iterations missing or invalid\n", p->name);
                 continue;
             }
-            run_preset(p->name, rows, cols, iter, impls, &results[num_results++]);
+            run_preset(p->name, n, iter, impls, &results[num_results++]);
         }
         preset_free(head);
     } else if (custom_iter > 0) {
         results = (PresetResult*)calloc(1, sizeof(PresetResult));
-        run_preset("custom", custom_rows, custom_cols, custom_iter, impls, &results[0]);
+        run_preset("custom", custom_n, custom_iter, impls, &results[0]);
         num_results = 1;
     } else if (run_all) {
         results = (PresetResult*)calloc(num_builtin, sizeof(PresetResult));
         for (int i = 0; i < num_builtin; i++) {
             BuiltinPreset* bp = &builtin_presets[i];
-            run_preset(bp->name, bp->rows, bp->cols, bp->iterations, impls, &results[i]);
+            run_preset(bp->name, bp->n, bp->iterations, impls, &results[i]);
         }
         num_results = num_builtin;
     } else {
-        const char* name = single_preset ? single_preset : "medium";
+        const char* name = single_preset ? single_preset : "l2_fit";
         int found = -1;
         for (int i = 0; i < num_builtin; i++)
             if (strcmp(name, builtin_presets[i].name) == 0) { found = i; break; }
@@ -375,14 +340,14 @@ int main(int argc, char* argv[]) {
         }
         results = (PresetResult*)calloc(1, sizeof(PresetResult));
         BuiltinPreset* bp = &builtin_presets[found];
-        run_preset(bp->name, bp->rows, bp->cols, bp->iterations, impls, &results[0]);
+        run_preset(bp->name, bp->n, bp->iterations, impls, &results[0]);
         num_results = 1;
     }
 
     print_summary(results, num_results);
 
     if (json_path && num_results > 0) {
-        json_write_results(json_path, "gemv", nthreads, NUM_RUNS, results, num_results);
+        json_write_results(json_path, "dot", nthreads, NUM_RUNS, results, num_results);
         printf("\nResults written to %s\n", json_path);
     }
 

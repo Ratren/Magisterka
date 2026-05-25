@@ -74,4 +74,16 @@ RunStats run_kernel(bench_fn fn, void* ctx,
                     int warmup_iters, int timed_iters,
                     int num_runs, double work_per_iter);
 
+void   gen_double_arr(double* arr, size_t n);
+void   gen_float_arr(float* arr, size_t n);
+double max_abs_diff_d(const double* a, const double* b, size_t n);
+double max_abs_diff_f(const float* a, const float* b, size_t n);
+
+void bench_snapshot(PresetResult* out, const char* name,
+                    const char* params_json,
+                    const ImplResult* impls, int num_impls);
+void bench_free_results(PresetResult* results, int n);
+void bench_print_summary(const PresetResult* results, int n,
+                         int num_impls, int num_runs);
+
 #endif

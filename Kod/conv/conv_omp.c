@@ -9,16 +9,6 @@ extern void conv_packed_core(int Cin, int H, int W, int KH, int KW, int Cout,
                              const float* X, const float* Wk, float* Y,
                              const float* W_pack, float* X_pack);
 
-static void pack_W_shared(int Cin, int KH, int KW, int Cout,
-                          const float* Wk, float* W_pack) {
-    for (int ic = 0; ic < Cin; ic++)
-        for (int kh = 0; kh < KH; kh++)
-            for (int kw = 0; kw < KW; kw++)
-                for (int oc = 0; oc < Cout; oc++)
-                    W_pack[((ic * KH + kh) * KW + kw) * Cout + oc] =
-                        Wk[((oc * Cin + ic) * KH + kh) * KW + kw];
-}
-
 static inline int imin(int a, int b) { return a < b ? a : b; }
 static inline int round_up(int x, int m) { return ((x + m - 1) / m) * m; }
 
@@ -28,7 +18,7 @@ void conv_omp(int Cin, int H, int W, int KH, int KW, int Cout,
     int OW = W - KW + 1;
 
     float* W_pack = (float*)aligned_alloc(64, (size_t)Cin * KH * KW * Cout * sizeof(float));
-    pack_W_shared(Cin, KH, KW, Cout, Wk, W_pack);
+    conv_pack_W_oc_innermost(Cin, KH, KW, Cout, Wk, W_pack);
 
     #pragma omp parallel
     {
@@ -43,8 +33,8 @@ void conv_omp(int Cin, int H, int W, int KH, int KW, int Cout,
             int oc_count = oc_end - oc_start;
             float* X_pack = (float*)aligned_alloc(64, (size_t)Cin * KH * KW * CONV_NR * sizeof(float));
 
-            // Build a local W_pack slice for [oc_start, oc_end) so the core
-            // function (which expects Cout columns) sees only this thread's range.
+            // conv_packed_core expects W_pack laid out as (..., Cout); slice it to this
+            // thread's oc range so the core sees oc_count contiguous output channels.
             float* W_pack_local = (float*)aligned_alloc(64, (size_t)Cin * KH * KW * oc_count * sizeof(float));
             for (int ic = 0; ic < Cin; ic++)
                 for (int kh = 0; kh < KH; kh++)

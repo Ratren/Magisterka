@@ -16,6 +16,11 @@
 void im2col(int Cin, int H, int W, int KH, int KW,
             const float* X, float* col);
 
+// Repack Wk from (Cout, Cin, KH, KW) -> (Cin, KH, KW, Cout): inner dim is Cout
+// so the microkernel can broadcast contiguous oc lanes.
+void conv_pack_W_oc_innermost(int Cin, int KH, int KW, int Cout,
+                              const float* Wk, float* W_pack);
+
 void sgemm_packed_internal(int M, int N, int K, float alpha,
                            const float* A, const float* B,
                            float beta, float* C);

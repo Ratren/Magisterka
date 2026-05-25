@@ -7,10 +7,8 @@
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 
-static inline int imin(int a, int b) { return a < b ? a : b; }
-
-static void pack_W(int Cin, int KH, int KW, int Cout,
-                   const float* Wk, float* W_pack) {
+void conv_pack_W_oc_innermost(int Cin, int KH, int KW, int Cout,
+                              const float* Wk, float* W_pack) {
     for (int ic = 0; ic < Cin; ic++)
         for (int kh = 0; kh < KH; kh++)
             for (int kw = 0; kw < KW; kw++)
@@ -76,7 +74,6 @@ void conv_packed_core(int Cin, int H, int W, int KH, int KW, int Cout,
                       const float* W_pack, float* X_pack) {
     int oc_blk = (Cout / CONV_MR) * CONV_MR;
     int ow_blk = (OW / CONV_NR) * CONV_NR;
-    int steps  = Cin * KH * KW;
 
     for (int oh = 0; oh < OH; oh++) {
         for (int ow = 0; ow < ow_blk; ow += CONV_NR) {
@@ -89,7 +86,6 @@ void conv_packed_core(int Cin, int H, int W, int KH, int KW, int Cout,
                     }
                 }
             }
-            (void)steps;
             for (int oc = 0; oc < oc_blk; oc += CONV_MR) {
                 ukr_packed(Cin, KH, KW, Cout, oc, OH, OW, oh, ow,
                            X_pack, W_pack, Y);
@@ -115,11 +111,10 @@ HOT void conv_packed(int Cin, int H, int W, int KH, int KW, int Cout,
 
     float* W_pack = (float*)aligned_alloc(64, (size_t)Cin * KH * KW * Cout * sizeof(float));
     float* X_pack = (float*)aligned_alloc(64, (size_t)Cin * KH * KW * CONV_NR * sizeof(float));
-    pack_W(Cin, KH, KW, Cout, Wk, W_pack);
+    conv_pack_W_oc_innermost(Cin, KH, KW, Cout, Wk, W_pack);
 
     conv_packed_core(Cin, H, W, KH, KW, Cout, OH, OW, X, Wk, Y, W_pack, X_pack);
 
     free(X_pack);
     free(W_pack);
-    (void)imin;
 }

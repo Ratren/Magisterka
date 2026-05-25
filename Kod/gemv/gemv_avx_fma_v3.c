@@ -141,27 +141,19 @@ HOT void gemv_avx_fma_v3(int rows, int cols, double alpha,
     if (beta == 0.0) {
         memset(y, 0, (size_t)rows * sizeof(double));
     } else if (beta != 1.0) {
-        for (int i = 0; i < rows; i++) {
-            y[i] *= beta;
-        }
+        for (int i = 0; i < rows; i++) y[i] *= beta;
     }
-    
+
     const double* a_ptr = A;
     double* y_ptr = y;
-    
     int i = 0;
-    
+
     for (; i + 3 < rows; i += 4) {
-        gemv_kernel_4rows_dual_acc(cols,
-                                   a_ptr,
-                                   a_ptr + cols,
-                                   a_ptr + 2 * cols,
-                                   a_ptr + 3 * cols,
+        gemv_kernel_4rows_dual_acc(cols, a_ptr, a_ptr + cols, a_ptr + 2 * cols, a_ptr + 3 * cols,
                                    x, y_ptr, alpha);
         a_ptr += 4 * cols;
         y_ptr += 4;
     }
-    
     for (; i < rows; i++) {
         gemv_kernel_1row(cols, a_ptr, x, y_ptr, alpha);
         a_ptr += cols;

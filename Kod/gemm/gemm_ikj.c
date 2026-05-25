@@ -1,17 +1,10 @@
 #include "gemm.h"
+#include "gemm_internal.h"
 
 void gemm_ikj(int M, int N, int K, double alpha,
               const double* A, const double* B,
               double beta, double* C) {
-    if (beta == 0.0) {
-        for (int i = 0; i < M; i++)
-            for (int j = 0; j < N; j++)
-                C[i * N + j] = 0.0;
-    } else if (beta != 1.0) {
-        for (int i = 0; i < M; i++)
-            for (int j = 0; j < N; j++)
-                C[i * N + j] *= beta;
-    }
+    gemm_apply_beta(M, N, beta, C);
 
     for (int i = 0; i < M; i++) {
         for (int k = 0; k < K; k++) {

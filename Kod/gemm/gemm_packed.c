@@ -7,8 +7,14 @@
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 
-static inline int imin(int a, int b) { return a < b ? a : b; }
-static inline int round_up(int x, int m) { return ((x + m - 1) / m) * m; }
+void gemm_apply_beta(int M, int N, double beta, double* C) {
+    if (beta == 0.0) {
+        for (int i = 0; i < M; i++) memset(&C[i * N], 0, N * sizeof(double));
+    } else if (beta != 1.0) {
+        for (int i = 0; i < M; i++)
+            for (int j = 0; j < N; j++) C[i * N + j] *= beta;
+    }
+}
 
 void pack_A_panel(int mc, int kc, const double* A, int lda, double* A_pack) {
     int stripes = (mc + MR - 1) / MR;
@@ -101,10 +107,10 @@ void macrokernel(int mc, int nc, int kc,
                  const double* A_pack, const double* B_pack,
                  double* C, int ldc) {
     for (int ir = 0; ir < mc; ir += MR) {
-        int mr = imin(MR, mc - ir);
+        int mr = gemm_imin(MR, mc - ir);
         const double* A_stripe = A_pack + (ir / MR) * MR * kc;
         for (int jr = 0; jr < nc; jr += NR) {
-            int nr = imin(NR, nc - jr);
+            int nr = gemm_imin(NR, nc - jr);
             const double* B_stripe = B_pack + (jr / NR) * NR * kc;
             double* C_tile = C + ir * ldc + jr;
             if (mr == MR && nr == NR) {
@@ -116,35 +122,26 @@ void macrokernel(int mc, int nc, int kc,
     }
 }
 
-static void apply_beta(int M, int N, double beta, double* C) {
-    if (beta == 0.0) {
-        for (int i = 0; i < M; i++) memset(&C[i * N], 0, N * sizeof(double));
-    } else if (beta != 1.0) {
-        for (int i = 0; i < M; i++)
-            for (int j = 0; j < N; j++) C[i * N + j] *= beta;
-    }
-}
-
 void gemm_packed_core(int M, int N, int K, double alpha,
                       const double* A, const double* B, double* C,
                       double* A_pack, double* B_pack) {
     for (int jc = 0; jc < N; jc += NC) {
-        int nc = imin(NC, N - jc);
+        int nc = gemm_imin(NC, N - jc);
         for (int pc = 0; pc < K; pc += KC) {
-            int kc = imin(KC, K - pc);
+            int kc = gemm_imin(KC, K - pc);
             pack_B_panel(kc, nc, B + pc * N + jc, N, B_pack);
             for (int ic = 0; ic < M; ic += MC) {
-                int mc = imin(MC, M - ic);
+                int mc = gemm_imin(MC, M - ic);
                 pack_A_panel(mc, kc, A + ic * K + pc, K, A_pack);
 
                 if (alpha == 1.0) {
                     macrokernel(mc, nc, kc, A_pack, B_pack, C + ic * N + jc, N);
                 } else {
                     for (int ir = 0; ir < mc; ir += MR) {
-                        int mr = imin(MR, mc - ir);
+                        int mr = gemm_imin(MR, mc - ir);
                         const double* A_stripe = A_pack + (ir / MR) * MR * kc;
                         for (int jr = 0; jr < nc; jr += NR) {
-                            int nr = imin(NR, nc - jr);
+                            int nr = gemm_imin(NR, nc - jr);
                             const double* B_stripe = B_pack + (jr / NR) * NR * kc;
                             double* C_tile = C + (ic + ir) * N + jc + jr;
                             if (mr == MR && nr == NR)
@@ -162,11 +159,11 @@ void gemm_packed_core(int M, int N, int K, double alpha,
 void gemm_packed(int M, int N, int K, double alpha,
                  const double* A, const double* B,
                  double beta, double* C) {
-    apply_beta(M, N, beta, C);
+    gemm_apply_beta(M, N, beta, C);
 
-    int mb_eff = round_up(imin(MC, M), MR);
-    int nb_eff = round_up(imin(NC, N), NR);
-    int kc_eff = imin(KC, K);
+    int mb_eff = gemm_round_up(gemm_imin(MC, M), MR);
+    int nb_eff = gemm_round_up(gemm_imin(NC, N), NR);
+    int kc_eff = gemm_imin(KC, K);
 
     double* A_pack = (double*)aligned_alloc(64, (size_t)mb_eff * kc_eff * sizeof(double));
     double* B_pack = (double*)aligned_alloc(64, (size_t)kc_eff * nb_eff * sizeof(double));

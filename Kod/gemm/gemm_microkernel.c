@@ -1,7 +1,6 @@
 #include "gemm.h"
 #include "gemm_internal.h"
 #include <immintrin.h>
-#include <string.h>
 
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
@@ -83,14 +82,7 @@ static void ukr_scalar_edge(int K, int mr, int nr,
 HOT void gemm_microkernel(int M, int N, int K, double alpha,
                           const double* A, const double* B,
                           double beta, double* C) {
-    if (beta == 0.0) {
-        for (int i = 0; i < M; i++)
-            memset(&C[i * N], 0, N * sizeof(double));
-    } else if (beta != 1.0) {
-        for (int i = 0; i < M; i++)
-            for (int j = 0; j < N; j++)
-                C[i * N + j] *= beta;
-    }
+    gemm_apply_beta(M, N, beta, C);
 
     int mb = (M / MR) * MR;
     int nb = (N / NR) * NR;

@@ -2,25 +2,9 @@
 #include "conv_internal.h"
 #include <immintrin.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
-
-// Pack Wk from (OC, IC, KH, KW) to (IC, KH, KW, OC).
-static void pack_W_oc_innermost(int Cin, int KH, int KW, int Cout,
-                                const float* Wk, float* W_pack) {
-    for (int ic = 0; ic < Cin; ic++) {
-        for (int kh = 0; kh < KH; kh++) {
-            for (int kw = 0; kw < KW; kw++) {
-                for (int oc = 0; oc < Cout; oc++) {
-                    W_pack[((ic * KH + kh) * KW + kw) * Cout + oc] =
-                        Wk[((oc * Cin + ic) * KH + kh) * KW + kw];
-                }
-            }
-        }
-    }
-}
 
 ALWAYS_INLINE HOT void ukr_6oc_16ow(int Cin, int KH, int KW,
                                     int H, int W, int OH, int OW,
@@ -88,7 +72,7 @@ HOT void conv_microkernel(int Cin, int H, int W, int KH, int KW, int Cout,
     int OW = W - KW + 1;
 
     float* W_pack = (float*)aligned_alloc(64, (size_t)Cin * KH * KW * Cout * sizeof(float));
-    pack_W_oc_innermost(Cin, KH, KW, Cout, Wk, W_pack);
+    conv_pack_W_oc_innermost(Cin, KH, KW, Cout, Wk, W_pack);
 
     int oc_blk = (Cout / CONV_MR) * CONV_MR;
     int ow_blk = (OW / CONV_NR) * CONV_NR;

@@ -145,29 +145,13 @@ ALWAYS_INLINE HOT void NAME(                                                    
     }                                                                             \
 }
 
-// ============================================================
-// Kernel L1: male macierze
-// ROW_BLOCK=64, COL_BLOCK=512 (ze strojenia)
-// ============================================================
+// Block sizes from offline tuning (see tuning.c).
+// L1 kernel skips prefetch (working set already fits L1).
 DEFINE_BLOCKED_KERNEL(gemv_kernel_l1_impl, L1_ROW_BLOCK, L1_COL_BLOCK, 0)
-
-// ============================================================
-// Kernel L2: srednie macierze
-// ROW_BLOCK=128, COL_BLOCK=256 (ze strojenia)
-// ============================================================
 DEFINE_BLOCKED_KERNEL(gemv_kernel_l2_impl, L2_ROW_BLOCK, L2_COL_BLOCK, 1)
-
-// ============================================================
-// Kernel L3: duze macierze
-// ROW_BLOCK=64, COL_BLOCK=512 (ze strojenia)
-// ============================================================
 DEFINE_BLOCKED_KERNEL(gemv_kernel_l3_impl, L3_ROW_BLOCK, L3_COL_BLOCK, 1)
 
-// ============================================================
-// Wrappery dla kerneli - utrzymuja czytelna strukture kodu
-// przy jednoczesnym zachowaniu mozliwosci profilowania
-// ============================================================
-
+// Wrappers preserve a non-inlined symbol per cache level for profiling.
 HOT static void gemv_kernel_l1(int rows, int cols, double alpha,
                                const double* __restrict A,
                                const double* __restrict x,
@@ -201,23 +185,17 @@ ALWAYS_INLINE void scale_y(double* __restrict y, int rows, double beta) {
     }
 }
 
-// ============================================================
-// Glowna funkcja GEMV z automatycznym wyborem kernela
-// __restrict informuje kompilator ze wskazniki nie nachodza
-// ============================================================
 HOT void gemv_avx_fma_blocked(int rows, int cols, double alpha,
                               const double* __restrict A,
                               const double* __restrict x,
                               double beta,
                               double* __restrict y) {
-    
     scale_y(y, rows, beta);
-    
-    // Oblicz working set w bajtach
-    const size_t working_set = (size_t)rows * cols * sizeof(double) + 
-                               (size_t)cols * sizeof(double) + 
+
+    const size_t working_set = (size_t)rows * cols * sizeof(double) +
+                               (size_t)cols * sizeof(double) +
                                (size_t)rows * sizeof(double);
-    
+
     if (working_set <= L1_THRESHOLD) {
         gemv_kernel_l1(rows, cols, alpha, A, x, y);
     } else if (working_set <= L2_THRESHOLD) {

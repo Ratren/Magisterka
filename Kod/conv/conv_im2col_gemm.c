@@ -23,9 +23,7 @@ void im2col(int Cin, int H, int W, int KH, int KW,
                 float* dst = &col[row * OH * OW];
                 for (int oh = 0; oh < OH; oh++) {
                     const float* src = &X[ic * H * W + (oh + kh) * W + kw];
-                    for (int ow = 0; ow < OW; ow++) {
-                        dst[oh * OW + ow] = src[ow];
-                    }
+                    memcpy(&dst[oh * OW], src, OW * sizeof(float));
                 }
             }
         }
@@ -60,19 +58,19 @@ void conv_im2col_openblas(int Cin, int H, int W, int KH, int KW, int Cout,
 
 void conv_im2col_blis(int Cin, int H, int W, int KH, int KW, int Cout,
                       const float* X, const float* Wk, float* Y) {
+    if (!conv_blis_sgemm_f77) return;
+
     int OH = H - KH + 1;
     int OW = W - KW + 1;
     int K  = Cin * KH * KW;
     int N  = OH * OW;
 
-    if (!conv_blis_sgemm_f77) return;
-
     float* col = alloc_im2col_buf(Cin, KH, KW, OH, OW);
     im2col(Cin, H, W, KH, KW, X, col);
 
     // Row-major Y(Cout, N) = Wk(Cout, K) * col(K, N) via Fortran column-major sgemm:
-    //   Fortran sees Wk as (K, Cout), col as (N, K). Compute col^T * Wk^T = (col Wk)^T;
-    //   in row-major that's the rows-major product we want, transposed by the column-major view.
+    // viewed column-major, col is (N, K) and Wk is (K, Cout), so col * Wk gives
+    // the same byte layout as the row-major Wk * col we want.
     char trans = 'N';
     int m = N, n = Cout, k = K, lda = N, ldb = K, ldc = N;
     float alpha = 1.0f, beta = 0.0f;

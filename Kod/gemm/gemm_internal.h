@@ -7,6 +7,11 @@
 #define KC 256
 #define NC 4080
 
+static inline int gemm_imin(int a, int b) { return a < b ? a : b; }
+static inline int gemm_round_up(int x, int m) { return ((x + m - 1) / m) * m; }
+
+void gemm_apply_beta(int M, int N, double beta, double* C);
+
 void dgemm_ukr_6x8(int kc,
                    const double* __restrict A_pack,
                    const double* __restrict B_pack,

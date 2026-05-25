@@ -67,19 +67,6 @@ static void blis_wrapper(int rows, int cols, double alpha,
     blis_dgemv_f77(&trans, &m, &n, &alpha, A, &lda, x, &incx, &beta, y, &incy);
 }
 
-static void gen_double_arr(double* arr, size_t n) {
-    for (size_t i = 0; i < n; i++) arr[i] = ((double)rand() / RAND_MAX) * 2.0 - 1.0;
-}
-
-static double calc_max_error(const double* y1, const double* y2, int size) {
-    double max_err = 0.0;
-    for (int i = 0; i < size; i++) {
-        double err = fabs(y1[i] - y2[i]);
-        if (err > max_err) max_err = err;
-    }
-    return max_err;
-}
-
 #define BUDGET_PER_RUN_SEC 1.0
 #define MAX_SECONDS_PER_CALL 20.0
 
@@ -103,7 +90,7 @@ static int measure_one(Impl* impl, int rows, int cols, int iterations,
 
     if (t_one > MAX_SECONDS_PER_CALL) {
         impl->median = impl->min = impl->max = impl->stddev = 0.0;
-        impl->max_error = calc_max_error(y, y_ref, rows);
+        impl->max_error = max_abs_diff_d(y, y_ref, (size_t)rows);
         return 0;
     }
 
@@ -139,7 +126,7 @@ static int measure_one(Impl* impl, int rows, int cols, int iterations,
     impl->min = min_g;
     impl->max = max_g;
     impl->stddev = (runs > 1) ? compute_stddev(impl->runs, runs, impl->median) : 0.0;
-    impl->max_error = calc_max_error(y, y_ref, rows);
+    impl->max_error = max_abs_diff_d(y, y_ref, (size_t)rows);
     return 1;
 }
 
@@ -211,20 +198,19 @@ static void print_table(const Impl* impls, int rows, int cols) {
 
 static void snapshot(PresetResult* out, const char* name, int rows, int cols,
                      const Impl* impls) {
-    strncpy(out->name, name, sizeof(out->name) - 1);
-    out->name[sizeof(out->name) - 1] = 0;
-    snprintf(out->params_json, sizeof(out->params_json),
-             "\"rows\": %d, \"cols\": %d", rows, cols);
-    out->num_impls = NUM_IMPLEMENTATIONS;
-    out->impls = (ImplResult*)calloc(NUM_IMPLEMENTATIONS, sizeof(ImplResult));
+    char params[64];
+    snprintf(params, sizeof(params), "\"rows\": %d, \"cols\": %d", rows, cols);
+    ImplResult tmp[NUM_IMPLEMENTATIONS];
     for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) {
-        strncpy(out->impls[i].name, impls[i].name, sizeof(out->impls[i].name) - 1);
-        out->impls[i].median = impls[i].median;
-        out->impls[i].min = impls[i].min;
-        out->impls[i].max = impls[i].max;
-        out->impls[i].stddev = impls[i].stddev;
-        out->impls[i].max_error = impls[i].max_error;
+        memset(&tmp[i], 0, sizeof(tmp[i]));
+        strncpy(tmp[i].name, impls[i].name, sizeof(tmp[i].name) - 1);
+        tmp[i].median = impls[i].median;
+        tmp[i].min = impls[i].min;
+        tmp[i].max = impls[i].max;
+        tmp[i].stddev = impls[i].stddev;
+        tmp[i].max_error = impls[i].max_error;
     }
+    bench_snapshot(out, name, params, tmp, NUM_IMPLEMENTATIONS);
 }
 
 static void run_preset(const char* name, int rows, int cols, int iterations,
@@ -234,28 +220,6 @@ static void run_preset(const char* name, int rows, int cols, int iterations,
     run_case(rows, cols, iterations, impls);
     print_table(impls, rows, cols);
     if (out) snapshot(out, name, rows, cols, impls);
-}
-
-static void print_summary(const PresetResult* results, int n) {
-    if (n <= 1) return;
-    printf("\n================================================================\n");
-    printf("              PODSUMOWANIE - Median GFLOPS (%d runs)\n", NUM_RUNS);
-    printf("================================================================\n");
-    printf("%-20s |", "Implementacja");
-    for (int p = 0; p < n; p++) printf(" %8s |", results[p].name);
-    printf("\n---------------------|");
-    for (int p = 0; p < n; p++) printf("----------|");
-    printf("\n");
-    for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) {
-        printf("%-20s |", results[0].impls[i].name);
-        for (int p = 0; p < n; p++) printf(" %8.2f |", results[p].impls[i].median);
-        printf("\n");
-    }
-    printf("================================================================\n");
-}
-
-static void free_results(PresetResult* results, int n) {
-    for (int i = 0; i < n; i++) free(results[i].impls);
 }
 
 static void print_usage(const char* prog) {
@@ -379,7 +343,7 @@ int main(int argc, char* argv[]) {
         num_results = 1;
     }
 
-    print_summary(results, num_results);
+    bench_print_summary(results, num_results, NUM_IMPLEMENTATIONS, NUM_RUNS);
 
     if (json_path && num_results > 0) {
         json_write_results(json_path, "gemv", nthreads, NUM_RUNS, results, num_results);
@@ -387,7 +351,7 @@ int main(int argc, char* argv[]) {
     }
 
 cleanup:
-    if (results) { free_results(results, num_results); free(results); }
+    if (results) { bench_free_results(results, num_results); free(results); }
     blis_loader_shutdown();
     return rc;
 }

@@ -4,21 +4,16 @@
 #include <stdint.h>
 #include <omp.h>
 
-// V3 OpenMP: Parallel GEMV for Zen 3
-//
-// - Each thread gets a contiguous block of rows (aligned to 4)
-// - No false sharing: each thread writes separate y region
-// - x vector shared read-only (fits in L3, broadcast efficient)
+// Parallel GEMV for Zen 3: contiguous row blocks per thread (aligned to 4),
+// no false sharing on y, x shared read-only across threads.
 
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 
-// Don't parallelize if too few rows or elements 
 #define MIN_ROWS_FOR_PARALLEL 128
 #define MIN_ELEMENTS_FOR_PARALLEL (256 * 256)
-// Very large matrices are memory-bound; multi-threaded access causes
-// contention on the memory controller and hurts performance.
-// Threshold at 8M covers medium (1M) but skips large (16M).
+// Very large matrices are memory-bound; multi-threaded access contends on the
+// memory controller. Threshold at 8M covers medium (1M) but skips large (16M).
 #define MAX_ELEMENTS_FOR_PARALLEL (8 * 1024 * 1024)
 
 ALWAYS_INLINE double hsum_pd(__m256d v) {
@@ -159,22 +154,14 @@ static inline void process_row_range(
 {
     const double* a_ptr = A + (size_t)start_row * cols;
     double* y_ptr = y + start_row;
-
     int i = start_row;
 
-    // Process 4 rows at a time
     for (; i + 3 < end_row; i += 4) {
-        gemv_kernel_4rows(cols,
-                          a_ptr,
-                          a_ptr + cols,
-                          a_ptr + 2 * cols,
-                          a_ptr + 3 * cols,
+        gemv_kernel_4rows(cols, a_ptr, a_ptr + cols, a_ptr + 2 * cols, a_ptr + 3 * cols,
                           x, y_ptr, alpha);
         a_ptr += 4 * cols;
         y_ptr += 4;
     }
-
-    // Handle remaining 1-3 rows
     for (; i < end_row; i++) {
         gemv_kernel_1row(cols, a_ptr, x, y_ptr, alpha);
         a_ptr += cols;
@@ -182,27 +169,24 @@ static inline void process_row_range(
     }
 }
 
-// Uses a single omp parallel region with manual row division
-// instead of parallel for — avoids per-iteration OMP overhead.
-// Thread boundaries aligned to 4-row groups for SIMD efficiency.
+// Single omp parallel region with manual row division avoids the per-iteration
+// overhead of #pragma omp parallel for. Thread boundaries aligned to 4 rows
+// so each chunk uses the 4-row SIMD kernel.
 HOT void gemv_avx_fma_v3_omp(int rows, int cols, double alpha,
                               const double* __restrict A,
                               const double* __restrict x,
                               double beta,
                               double* __restrict y)
 {
-    // Scale y by beta
     if (beta == 0.0) {
         memset(y, 0, (size_t)rows * sizeof(double));
     } else if (beta != 1.0) {
-        for (int i = 0; i < rows; i++) {
-            y[i] *= beta;
-        }
+        for (int i = 0; i < rows; i++) y[i] *= beta;
     }
 
     size_t total_elements = (size_t)rows * cols;
 
-    // too small (thread overhead) or too large (memory-bound)
+    // Skip parallelism when too small (thread overhead) or too large (memory-bound).
     if (rows < MIN_ROWS_FOR_PARALLEL ||
         total_elements < MIN_ELEMENTS_FOR_PARALLEL ||
         total_elements > MAX_ELEMENTS_FOR_PARALLEL) {
@@ -215,12 +199,11 @@ HOT void gemv_avx_fma_v3_omp(int rows, int cols, double alpha,
         int nt = omp_get_num_threads();
         int tid = omp_get_thread_num();
 
-        // Divide rows into 4-row chunks, distribute evenly
         int total_chunks = (rows + 3) / 4;
         int chunks_per_thread = total_chunks / nt;
         int extra = total_chunks % nt;
 
-        // First 'extra' threads get one additional chunk
+        // First 'extra' threads get one additional 4-row chunk.
         int start_chunk = tid * chunks_per_thread + (tid < extra ? tid : extra);
         int end_chunk = start_chunk + chunks_per_thread + (tid < extra ? 1 : 0);
 

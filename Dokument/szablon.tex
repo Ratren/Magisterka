@@ -1,0 +1,247 @@
+\documentclass[a4paper,12pt]{book} % nie: report!
+
+
+\usepackage[T1,plmath]{polski} % lepiej to zamiast babel!
+\usepackage[utf8]{inputenc} % w razie kłopotów spróbować: \usepackage[utf8x]{inputenc}
+\usepackage{fancyhdr} % nagłówki i stopki
+\usepackage{indentfirst} % WAŻNE, MA BYĆ!
+\usepackage[pdftex]{graphicx} % to do wstawiania rysunków
+\usepackage{amsfonts} % pakiety od AMS, ułatwiają składanie pewnych techniczno-matematcyznych rzeczy
+\usepackage{amsmath} % to do dodatkowych symboli, przydatne
+\usepackage{amssymb} % to też do dodatkowych symboli, też przydatne
+\usepackage{amsthm}
+\usepackage[pdftex,
+            left=1.1in,right=1.1in,
+            top=1.1in,bottom=1.1in]{geometry} % marginesy
+\usepackage{float}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{cite}
+
+\usepackage[colorlinks=true]{hyperref} % odnośniki interaktywne w PDFie
+\hypersetup{allcolors=blue} % odnośniki proszę zostawić kolorowe -- a jeśli ktoś nie lubi to zmienić na czarne dopiero w ostatniej wersji!
+\usepackage{listings}
+\lstset{
+    basicstyle=\footnotesize\tt,
+    numbers=left,
+    numberstyle=\tiny,
+    frame=tb,
+    tabsize=4,
+    columns=fixed,
+    showstringspaces=false,
+    showtabs=false,
+    keepspaces,
+    captionpos=t,    
+    commentstyle=\color{red},
+    keywordstyle=\color{blue}
+}
+\newfloat{lstfloat}{htbp}{lolst}[chapter]
+\floatname{lstfloat}{Listing}
+\def\lstfloatautorefname{Listing}
+
+% jesli potrzeba, można oczywiście wstawić inne pakiety i swoje definicje...
+
+
+
+% definicje nagłówków i stopek
+\pagestyle{fancy}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\fancyhf{}
+\fancyhead[LE,RO]{\footnotesize\bfseries\thepage}
+\fancyhead[LO]{\footnotesize\rightmark}
+\fancyhead[RE]{\footnotesize\leftmark}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+\addtolength{\headheight}{1.5pt}
+\fancypagestyle{plain}{\fancyhead{}\cfoot{\footnotesize\bfseries\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+
+% interlinia
+\linespread{1.25}
+
+\bibliographystyle{plain}
+
+\begin{document}
+\begin{titlepage}
+
+\begin{tabular}{c@{\hspace{21mm}}|@{\hspace{5mm}}l}
+\vspace{-20mm} & \\
+\multicolumn{2}{l}{\hspace{-12.5mm} \includegraphics[width=8cm]{LogoUMCS.jpg}} \\
+\multicolumn{2}{@{\hspace{20mm}}l}{\vspace{-4mm}} \\
+\multicolumn{2}{@{\hspace{28mm}}l}{\Large \sf UNIWERSYTET MARII
+	CURIE-SKŁODOWSKIEJ} \\
+\multicolumn{2}{@{\hspace{28mm}}l}{\vspace{-4mm}} \\
+\multicolumn{2}{@{\hspace{28mm}}l}{\Large \sf W LUBLINIE} \\
+\multicolumn{2}{@{\hspace{28mm}}l}{\vspace{-4mm}} \\
+\multicolumn{2}{@{\hspace{28mm}}l}{\Large \sf Wydział Matematyki, Fizyki i
+	Informatyki} \\
+\multicolumn{2}{@{\hspace{28mm}}l}{\vspace{21mm}} \\
+& {\sf Kierunek: \textbf{informatyka/matematyka/geoinformatyka/...} } \\
+%& {\sf Specjalność: \textbf{informatyczna}} \\ % wpisujemy tylko jeśli jest!!!
+& \\\\\\
+& {\sf \large \bfseries Imię Nazwisko} \\
+& {\sf nr albumu: \dots} \\
+& \\\\\\
+& \Large \sf \bfseries Tytuł po polsku, który zwykle\\
+& \Large \sf \bfseries jest długi na wiele linijek\\\\[-10pt]
+& {\large \sf Title in English} \\
+& {\large \sf (also a long one)} \\
+& \\
+& \\
+& \\
+& {\sf Praca magisterska/licencjacka/inżynierska}  \\
+& \vspace{-7mm} \\
+&  {\sf napisana w Katedrze ...} \\
+&  {\sf Instytutu Informatyki i Matematyki UMCS} \\
+& \vspace{-7mm} \\
+& {\sf pod kierunkiem \bfseries stopień/tytuł imię i nazwisko (odmienione!)} \\
+\multicolumn{2}{@{\hspace{28mm}}l}{\vspace{15mm}} \\
+\multicolumn{2}{@{\hspace{28mm}}l}{\textbf{\textsf{Lublin 2022}}}
+\end{tabular}
+\end{titlepage}
+
+
+
+
+
+\sloppy
+
+
+
+\thispagestyle{empty}
+
+
+\newpage{}
+
+\thispagestyle{empty}
+
+\newpage{}
+
+
+
+\tableofcontents{}
+
+\chapter*{Wstęp} % z gwiazdką, więc bez numerka...
+\addcontentsline{toc}{chapter}{Wstęp} % ...ale w spisie treści ma być...
+\chaptermark{Wstęp} % ...i w paginie górnej
+
+Tu treść wstępu (który piszemy na końcu, po napisaniu całej pracy).
+
+\chapter{Podstawowe uwagi typograficzne}
+
+\section{Znaki specjalne}
+
+Kilka słow o~znakach specjalnych poniżej --- przy okazji mamy tu też przykład wyliczenia:
+\begin{itemize}
+\item
+Polskie cudzysłowy piszemy ,,tak'' (za pomocą dwóch przecinków dla otwarcia i~dwóch prawych apostrofów do zamknięcia).
+\item
+Cudzysłowy pojedyncze `xyz'
+\item Inne cudzysłowy (jeśli potrzeba):  <<xyz>>  >>xyz<<
+\item
+Kreski poziome sprawiają często problemy, więc pamiętamy: myślnik (pauza) rozdziela od siebie myśli --- tak jak tu --- i~pisze się go za pomocą trzech minusów otoczonych spacjami. Jeden minus to łącznik (pisany bez spacji), tak jak tu: biało-czerwony. Półpauzy (pisanej dwoma minusami bez spacji) używamy właściwie tylko do określania przedziałów typu: 7:00--9:00 (czyli od siódmej do dziewiątej).
+\item
+Wielokropek robimy instrukcją \verb+\ldots{}+, nie trzema kropkami. Powinien wyglądać tak\ldots{}
+\end{itemize}
+
+\section{Kroje pisma}
+
+Cytaty z~plików tekstowych, kodów programów, także komendy i~nazwy elementów języka --- pismem mamszynowym:
+\begin{verbatim}
+\begin{verbatim}...
+\verb+...+
+
+{\tt ...}
+\texttt{...}
+\end{verbatim}
+
+\section{Inne sprawy}
+
+Tytułów i~podpisów nie kończymy kropką, gdy są zdaniem lub równoważnikiem twierdzącym. Ale kończymy pytajnikiem, wielokropkiem lub wykrzyknikiem, gdy są odpowiednio pytające, zawieszone lub wykrzyknikowe.
+
+A,~i~jeszcze twarda spacja --- oznaczamy ją tyldą w kodzie: to i~to i~to i~to i~jeszcze to i~tamto i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~to i~tamto\ldots{}
+
+\chapter{Rozdział o tym jak pisać pracę}
+
+\section{Pierwszy podrozdział, w~którym są zawarte chaotyczne wskazówki z poprzedniej wersji jako przykłady}
+
+W tabeli~\ref{tab:przyk} widzimy przykład tabeli z~nagłówkiem i~odnośnikiem. Tabele tworzymy z~nagłówkiem na górze oraz (najlepiej) opcją \texttt{[t!]}.
+Natomiast na rysunku~\ref{rys:przyk} --- widzimy przykład rysunku z nagłówkiem i~odnośnikiem.
+Każda wstawka pływająca (rysunek, tabela, algorytm, listing, \ldots{}) musi mieć odnośnik w tekście (jak tutaj)!
+Rysunki tworzymy z nagłówkiem pod spodem oraz (najlepiej) opcją \texttt{[b!]}.
+Rysunki powinny być w formacie PDF; jeśli to niemożliwe, to PNG (w wysokiej rozdzielczości); a~ostatecznie JPG (jak tu). Jeśli chcemy sterować rozmiarem, to zwykle najwygodniej użyć \texttt{width=...}
+Ponadto możemy odwoływać się do bibliografii~\cite{Alsolami:2012,Mihalcea:2006,peyret2012:ch7,knuth:1984,latex2e,lesk:1977,web:lang:stats}. Zwracam uwagę, że niezacytowne pozycje z pliku \verb'.bib' nie są dołączane w bibliografii (patrz strona~\pageref{sec:bibliografia})
+
+Jeśli chodzi o wzory, możemy złożyć je na kilka sposobów, w zależności od potrzeb --- w tekście: $e=\lim_{n\to\infty}\left(1+\frac{1}{n}\right)^n$, wyniesiony do osbnej linii
+(warto zwrócić uwagę, że drugi i~trzeci są złożone nieco inaczej niż pierwszy):
+\[e=\lim_{n\to\infty}\left(1+\frac{1}{n}\right)^n,\] a także wyniesiony z numerem:
+\begin{equation}
+e=\lim_{n\to\infty}\left(1+\frac{1}{n}\right)^n.
+\label{wzor:e}
+\end{equation}
+Do tego ostatniego możemy się odwołać:~\eqref{wzor:e}.
+
+No i oczywiście listingi --- listing~\ref{lst:przyk} pokazuje, jak zrobić to w~miarę poprawnie\ldots{}
+\lstinline+int a, b, c;+
+
+\begin{figure}[b!]
+ \begin{center}
+  \includegraphics[width=5cm]{LogoUMCS}
+ \end{center}
+ \caption{Przykładowy rysunek}\label{rys:przyk}
+\end{figure}
+
+\begin{table}[t!]
+\begin{center}
+\caption{Przykładowa tabela}\label{tab:przyk}
+ \begin{tabular}{l|c|r}
+    slkdjfslj & sdkskd & s;lkdsdk \\
+    \hline
+    slkjd & skljdsldj& skljdsjdsldj \\
+    sljkdslkjd& woieupowiepoweiwiewp & weoiw eppowie wpo \\
+ \end{tabular}
+\end{center}
+\end{table}
+
+\begin{lstfloat}[t!]
+\lstset{language=C++}
+\begin{lstlisting}[frame=single, caption={Jakieś dwie linijki w~C++ (z~OpenACC)}, label={lst:przyk}]
+tab[0:n] = dem[nRows][nCols]; //?
+#pragma acc data copy(tab [0:n], slope [0:n])
+\end{lstlisting}
+\end{lstfloat}
+
+\clearpage{} % warto zrobić, jeśli chcemy się upewnić, że wstawki (rysunki itp.) nie wyjdą poza sekcję/podrozdział
+
+\section{Taka pusta sekcja (podrozdział)}
+
+Tu prawie nic nie ma. :)
+
+\chapter*{Podsumowanie} % jak we wstępie
+\addcontentsline{toc}{chapter}{Podsumowanie}
+\chaptermark{Podsumowanie}
+
+Tu treść podsumowania (którą --- oczywiście --- też piszemy na końcu).
+
+ % jeśli są listingi:
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Spis listingów}
+\renewcommand{\lstlistlistingname}{Spis listingów}
+\lstlistoflistings{}
+
+ % jeśli są tabele:
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Spis tabel}
+\listoftables{}
+
+ % jeśli są rysunki:
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Spis rysunków}
+\listoffigures{}
+
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Bibliografia} % też ręczne dodanie do spisu treści, jak Wstęp
+\label{sec:bibliografia}
+\bibliography{mojabibliografia}
+
+\end{document}

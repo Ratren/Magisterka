@@ -3,16 +3,6 @@
 #include <omp.h>
 #include <stdlib.h>
 
-/* Channel-blocked direct convolution with Cb=8 (one YMM lane in fp32).
-   Layout:
-     X̃(Cin/Cb, H, W, Cb)             from X(Cin, H, W)
-     W̃(Cout/Cb, Cin/Cb, KH, KW, Cb, Cb) from W(Cout, Cin, KH, KW)
-   Microkernel inner loop: load one YMM of weights (8 output channels for
-   one input channel of one kernel position), broadcast 6 spatial X values
-   in turn, accumulate into 6 YMMs (one per ow position). No broadcast on
-   the W side - the broadcasts come from X. 6 acc + 1 W + 1 X = 8 YMMs
-   active; plenty of headroom for the OOO scheduler. */
-
 #define CB 8
 
 extern void conv_packed(int, int, int, int, int, int,
@@ -71,8 +61,6 @@ static void reorder_W_to_blocked(int Cout, int Cin, int KH, int KW,
 
 void conv_nchwc(int Cin, int H, int W, int KH, int KW, int Cout,
                 const float* X, const float* Wk, float* Y) {
-    /* Falls back when channel counts aren't multiples of CB=8. All benchmark
-       presets satisfy this; this is the safe path for odd custom shapes. */
     if ((Cin % CB) != 0 || (Cout % CB) != 0) {
         conv_packed(Cin, H, W, KH, KW, Cout, X, Wk, Y);
         return;

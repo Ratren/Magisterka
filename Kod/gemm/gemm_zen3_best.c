@@ -6,16 +6,6 @@
 
 #define MAX_BEST_THREADS 32
 
-/* Best multi-thread DGEMM for Zen 3 — bundles every win found in this codebase:
-   - Tiny dispatch (min(M,N,K) <= 96 -> gemm_zen3_tiny, no alloc/packing)
-   - Shared B_pack across threads (one copy, fits L3 even at 4096^3)
-   - Per-thread A_pack (small, fits L2)
-   - Persistent workspace (no aligned_alloc per call)
-   - Vectorised 4x4-transpose A packer + 3-vector B packer (gemm_zen3_pack.h)
-   - Parallel B packing when NC is large enough to amortise the barrier
-   - ic-loop parallelism (BLIS-style multi-loop) with M-split fallback when
-     there aren't enough ic-blocks to keep all threads busy. */
-
 static double* g_A6_packs[MAX_BEST_THREADS] = {0};
 static size_t  g_A6_size = 0;
 static double* g_B6_pack = NULL;
@@ -37,9 +27,6 @@ static void ws_ensure_b(int nt, size_t a_sz, size_t b_sz) {
     }
 }
 
-/* Pack a single NR_Z-wide B stripe -- either the full vectorised path or the
-   zero-padded scalar edge for the final partial stripe. Used by the parallel
-   B pack inside gemm_zen3_best_omp. */
 static inline void pack_B_one_stripe(int s, int kc, int nc,
                                      const double* B, int ldb, double* B_pack) {
     int j_base = s * NR_Z;
@@ -61,22 +48,15 @@ void gemm_zen3_best_omp(int M, int N, int K, double alpha,
     int md = M < N ? M : N;
     if (K < md) md = K;
 
-    /* Tiny: skip OpenMP overhead and use the unpacked tiny path. At
-       md<=96 there's not enough work to amortise thread spawn. */
     if (md <= 96) {
         if (nthreads == 1) {
             gemm_zen3_tiny(M, N, K, alpha, A, B, beta, C);
         } else {
-            /* Small but parallel: per-thread M-split (gemm_zen3_omp) keeps all
-               threads busy. Shared-B would leave most threads idle. */
             gemm_zen3_omp(M, N, K, alpha, A, B, beta, C);
         }
         return;
     }
 
-    /* Shared-B path requires enough ic-blocks to feed every thread. With M
-       below nthreads*MC_Z most threads sit idle (e.g. M=256, MC_Z=192,
-       6 threads -> only 2 ic blocks). Fall back to per-thread M-split. */
     int num_ic_blocks = (M + MC_Z - 1) / MC_Z;
     if (num_ic_blocks < nthreads) {
         gemm_zen3_omp(M, N, K, alpha, A, B, beta, C);
@@ -98,9 +78,6 @@ void gemm_zen3_best_omp(int M, int N, int K, double alpha,
                 (size_t)mb_eff * kc_eff * sizeof(double),
                 (size_t)kc_eff * nb_eff * sizeof(double));
 
-    /* Parallelise B packing only when there are enough stripes to amortise
-       the OpenMP barrier cost (~30us at 6 threads). At small NC the
-       sequential path is faster. */
     const int PAR_B_PACK_MIN_STRIPES = 64;
 
     for (int jc = 0; jc < N; jc += NC_Z) {

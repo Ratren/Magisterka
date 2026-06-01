@@ -3,13 +3,6 @@
 #include <omp.h>
 #include <stdlib.h>
 
-/* BLIS-style ic-loop parallelism with a single shared B_pack across threads
-   (so the KC*NC*8 = 7.5 MiB panel sits in L3 once, not once per thread).
-   Each thread packs its own A panel for its slice of the ic loop; pc and
-   jc loops stay sequential. This is the educational variant that isolates
-   the shared-B win — for the production multi-thread path see
-   gemm_zen3_best_omp which adds vectorised packing, persistent workspace,
-   parallel B packing, and a tiny-size dispatch. */
 void gemm_zen3_par_omp(int M, int N, int K, double alpha,
                        const double* A, const double* B,
                        double beta, double* C) {

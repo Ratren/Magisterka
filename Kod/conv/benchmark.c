@@ -132,9 +132,6 @@ static void run_case(int Cin, int H, int W, int K, int Cout, int iterations,
     gen_float_arr(X, xSize);
     gen_float_arr(Wk, wSize);
 
-    /* Reference: libxsmm when available (its JIT'd AVX2 conv is the most
-       trustworthy fp32 ground truth we have), else fall back to OpenBLAS
-       SGEMM via im2col. conv_naive is too slow at the larger presets. */
     memset(Y_ref, 0, ySize * sizeof(float));
     if (libxsmm_loader_ok()) {
         conv_libxsmm(Cin, H, W, K, K, Cout, X, Wk, Y_ref);
@@ -247,9 +244,6 @@ int main(int argc, char* argv[]) {
     if (has_blis) conv_blis_sgemm_f77 = (blis_sgemm_f77_func)blis_loader_sym("sgemm_");
     int has_xsmm = libxsmm_loader_init();
 
-    /* Order: least to most optimised, then vendor comparisons at the end.
-       Microkernel and ST Zen3 dispatch are still in the source tree but
-       dropped from this list (subsumed by Packed Direct / Zen3 OMP). */
     Impl impls[NUM_IMPLEMENTATIONS] = {
         {"Naive",              conv_naive,           {0}, 0, 0, 0, 0, 0},
         {"Loop Reorder",       conv_reorder,         {0}, 0, 0, 0, 0, 0},

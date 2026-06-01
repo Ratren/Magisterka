@@ -1,8 +1,6 @@
 #ifndef CONV_INTERNAL_H
 #define CONV_INTERNAL_H
 
-// Direct conv microkernel tile: 6 output spatial positions x 16 output channels.
-// 6 broadcasts of X + 2 ymm of Wk + 12 FMAs per (ic, kh, kw) step.
 #define CONV_MR 6
 #define CONV_NR 16
 
@@ -16,8 +14,6 @@
 void im2col(int Cin, int H, int W, int KH, int KW,
             const float* X, float* col);
 
-// Repack Wk from (Cout, Cin, KH, KW) -> (Cin, KH, KW, Cout): inner dim is Cout
-// so the microkernel can broadcast contiguous oc lanes.
 void conv_pack_W_oc_innermost(int Cin, int KH, int KW, int Cout,
                               const float* Wk, float* W_pack);
 

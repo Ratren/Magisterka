@@ -1,17 +1,9 @@
-/* Shared inline AVX2 packers for the 4x12 microkernel. Used by both
-   gemm_zen3_tuned.c and gemm_zen3_best.c. Kept in a header (rather than
-   exposed via gemm_internal.h) so each translation unit gets its own
-   inlined copy without an extern call. */
-
 #ifndef GEMM_ZEN3_PACK_H
 #define GEMM_ZEN3_PACK_H
 
 #include "gemm_internal.h"
 #include <immintrin.h>
 
-/* Pack 4 contiguous A rows by transposing 4x4 blocks of doubles, so the
-   microkernel can vbroadcastsd a[i] from contiguous memory at offset
-   k*MR_Z + i. Output stride between rows in the same K column is MR_Z. */
 static inline __attribute__((always_inline))
 void pack_A_4rows_v(int kc, const double* A, int lda, double* dst) {
     const double* r0 = A;

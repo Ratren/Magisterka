@@ -7,12 +7,6 @@
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 
-/* No software prefetch inside the kernel: with 12 accumulators + 3 B regs +
-   1 A reg the YMM file is full, and the prefetch's address-calc plus branch
-   adds enough live values to push accumulators to the stack. Agner Fog's
-   microarchitecture manual §23.16 explicitly recommends relying on Zen 3's
-   HW prefetcher for streaming reads. */
-
 void pack_A_panel_z(int mc, int kc, const double* A, int lda, double* A_pack) {
     int stripes = (mc + MR_Z - 1) / MR_Z;
     for (int s = 0; s < stripes; s++) {
@@ -41,11 +35,6 @@ void pack_B_panel_z(int kc, int nc, const double* B, int ldb, double* B_pack) {
     }
 }
 
-/* The K loop body is written in inline assembly so we can pin all 12
-   accumulators to specific YMMs and prevent the spilling GCC otherwise does
-   when the register file is fully saturated (12 acc + 1 A broadcast + 3 B
-   = 16 YMMs, leaving 0 spare). YMM allocation: ymm4..ymm15 = 12 accs,
-   ymm0 = A broadcast, ymm1..ymm3 = B vectors. */
 ALWAYS_INLINE HOT void ukr_4x12_full(int kc,
                                      const double* __restrict A_pack,
                                      const double* __restrict B_pack,
@@ -92,8 +81,6 @@ ALWAYS_INLINE HOT void ukr_4x12_full(int kc,
         "decq %[k]                                   \n"
         "jnz 1b                                      \n"
 
-        /* C[i] += alpha * acc, encoded as vfmadd213pd: dest = src1*dest + src2,
-           i.e. acc = alpha*acc + old_C, then store acc back to C. */
         "vbroadcastsd %[alpha], %%ymm0               \n"
         "vfmadd213pd  0(%[C]),  %%ymm0, %%ymm4       \n"
         "vfmadd213pd  32(%[C]), %%ymm0, %%ymm5       \n"

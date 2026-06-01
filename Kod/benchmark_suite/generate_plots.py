@@ -31,11 +31,6 @@ VENDOR_PATTERNS = ("OpenBLAS", "BLIS", "libxsmm")
 NAIVE_PATTERNS = ("Naive", "naive")
 
 
-# Polish descriptive labels per implementation, keyed by the C-side
-# benchmark name. Each label says *what optimisation* the variant adds on
-# top of the previous step. Vendor libraries keep their proper names.
-# Substring match — entries earlier in this dict have priority when
-# multiple keys appear in the same name (e.g. "OMP" is part of "MT").
 IMPL_LABELS = {
     # dot_product
     "SIMD MultiAcc":         "SIMD AVX2 (4 akumulatory)",
@@ -192,9 +187,6 @@ def plot_kernel(kernel: str, rows: list[dict], threads: int, out_path: Path):
            label="Autorskie", color=PALETTE[0],
            edgecolor='black', linewidth=0.5)
 
-    # Vendor BLAS libraries don't ship native convolution kernels;
-    # everything in the conv "vendor" group goes through im2col + SGEMM.
-    # Make the legend say so explicitly.
     vendor_label_prefix = "im2col + " if kernel == "conv" else ""
 
     vendor_vals = {}
@@ -301,8 +293,6 @@ def plot_kernel_all_implementations(kernel: str,
     t_st, t_mt = threads_modes
     color_st = PALETTE[0]
     color_mt = PALETTE[3]
-    # Slightly thicker bars + a small gap between impl groups so the
-    # row labels and value annotations have breathing room.
     h_bar = 0.40
     y_step = 1.15
 
@@ -353,8 +343,6 @@ def plot_kernel_all_implementations(kernel: str,
         xmax = max(v1 + v6 + [0.0]) * 1.22
         if xmax > 0:
             ax.set_xlim(0, xmax)
-        # Invert by setting ylim with the larger value first so row 0
-        # (the best-performing impl) sits at the top with breathing room.
         ax.set_ylim((len(impl_names) - 1) * y_step + y_step * 0.6,
                     -y_step * 0.6)
 

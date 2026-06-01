@@ -7,15 +7,6 @@
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 
-/* BLIS-style scheduled 4x12 microkernel:
-   - K loop unrolled by 4
-   - B for iteration k+1 pre-loaded at the END of iteration k, so its 5-cycle
-     L1 load latency overlaps with the previous iteration's still-in-flight FMAs
-   - Initial B preload before the loop starts the pipeline
-   Register layout (matches the simple kernel in gemm_zen3.c):
-     ymm0       A broadcast (reused 4x per K iter)
-     ymm1..3    B vectors (3 lanes of 4 doubles each = 12 cols)
-     ymm4..15   12 accumulators (4 rows x 3 lanes) */
 ALWAYS_INLINE HOT void ukr_4x12_sched(int kc,
                                       const double* __restrict A_pack,
                                       const double* __restrict B_pack,

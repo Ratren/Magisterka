@@ -1,10 +1,6 @@
 #include "conv.h"
 #include <string.h>
 
-// Loop order: oc, ic, kh, kw, oh, ow.
-// For fixed (oc, ic, kh, kw), the inner (oh, ow) loops read X[ic, oh+kh, ow+kw]
-// sequentially in ow and write Y[oc, oh, ow] sequentially in ow.
-// Wk[oc, ic, kh, kw] is loop-invariant in the inner loops -- hoisted out.
 void conv_reorder(int Cin, int H, int W, int KH, int KW, int Cout,
                   const float* X, const float* Wk, float* Y) {
     int OH = H - KH + 1;

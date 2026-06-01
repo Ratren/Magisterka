@@ -5,12 +5,6 @@
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 
-/* Tiny-matrix DGEMM: skip packing entirely, skip aligned_alloc, run the
-   4x12 microkernel directly on the user's row-major input matrices.
-   For min(M,N,K) <= ~96 this dodges three overheads (alloc, pack, apply_beta
-   in separate pass) that dominate when actual FMA work is in the µs range,
-   matching the tiny / small fast paths in BLIS's bli_gemm_small.c. */
-
 ALWAYS_INLINE HOT void ukr_4x12_tiny(int K,
                                      const double* __restrict A, int lda,
                                      const double* __restrict B, int ldb,
@@ -84,8 +78,6 @@ ALWAYS_INLINE HOT void ukr_4x12_tiny(int K,
     }
 }
 
-/* Vectorised 4-row x 4-col tail kernel for the common case where N%12 = 4 or 8.
-   Saves the scalar fallback that otherwise dominates tiny benchmarks. */
 ALWAYS_INLINE HOT void ukr_4x4_tiny(int K,
                                     const double* __restrict A, int lda,
                                     const double* __restrict B, int ldb,

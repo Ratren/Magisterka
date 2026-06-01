@@ -68,9 +68,6 @@ void conv_im2col_blis(int Cin, int H, int W, int KH, int KW, int Cout,
     float* col = alloc_im2col_buf(Cin, KH, KW, OH, OW);
     im2col(Cin, H, W, KH, KW, X, col);
 
-    // Row-major Y(Cout, N) = Wk(Cout, K) * col(K, N) via Fortran column-major sgemm:
-    // viewed column-major, col is (N, K) and Wk is (K, Cout), so col * Wk gives
-    // the same byte layout as the row-major Wk * col we want.
     char trans = 'N';
     int m = N, n = Cout, k = K, lda = N, ldb = K, ldc = N;
     float alpha = 1.0f, beta = 0.0f;

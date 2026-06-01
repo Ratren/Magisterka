@@ -4,16 +4,11 @@
 #include <stdint.h>
 #include <omp.h>
 
-// Parallel GEMV for Zen 3: contiguous row blocks per thread (aligned to 4),
-// no false sharing on y, x shared read-only across threads.
-
 #define ALWAYS_INLINE static inline __attribute__((always_inline))
 #define HOT __attribute__((hot))
 
 #define MIN_ROWS_FOR_PARALLEL 128
 #define MIN_ELEMENTS_FOR_PARALLEL (256 * 256)
-// Very large matrices are memory-bound; multi-threaded access contends on the
-// memory controller. Threshold at 8M covers medium (1M) but skips large (16M).
 #define MAX_ELEMENTS_FOR_PARALLEL (8 * 1024 * 1024)
 
 ALWAYS_INLINE double hsum_pd(__m256d v) {
@@ -169,9 +164,6 @@ static inline void process_row_range(
     }
 }
 
-// Single omp parallel region with manual row division avoids the per-iteration
-// overhead of #pragma omp parallel for. Thread boundaries aligned to 4 rows
-// so each chunk uses the 4-row SIMD kernel.
 HOT void gemv_avx_fma_v3_omp(int rows, int cols, double alpha,
                               const double* __restrict A,
                               const double* __restrict x,

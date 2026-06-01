@@ -4,15 +4,6 @@
 #include <omp.h>
 #include <stdlib.h>
 
-/* Intermediate multi-thread variant: shared B_pack + vectorised packers
-   (gemm_zen3_pack.h) + persistent workspace. Compared to gemm_zen3_best.c
-   this one omits the tiny-size dispatch, the ic-block fallback, and the
-   parallel B-pack -- kept around so the benchmark can isolate each gain
-   from a single optimisation. */
-
-/* Persistent thread-local workspace pool: first call allocates, subsequent
-   calls reuse. Avoids the ~1-2us aligned_alloc+free per call which matters
-   at small problem sizes where it's a measurable fraction of total time. */
 #define MAX_TUNED_THREADS 64
 static double* g_A_packs[MAX_TUNED_THREADS] = {0};
 static size_t  g_A_pack_size = 0;
@@ -35,11 +26,6 @@ static void ensure_workspace(int nthreads, size_t a_sz, size_t b_sz) {
     }
 }
 
-/* Single-thread tuned dispatcher:
-   - min(M,N,K) <= 96: route through gemm_zen3_tiny (no packing, no alloc,
-     vectorised 4x4 edge handler for the common N%12 = 4 case)
-   - else:             plain gemm_zen3 (the persistent-workspace + vectorised
-     packing optimisations help multi-thread but cost a few % single-thread). */
 void gemm_zen3_tuned(int M, int N, int K, double alpha,
                      const double* A, const double* B,
                      double beta, double* C) {

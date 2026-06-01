@@ -4,21 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Winograd F(2x2, 3x3) for 3x3 stride-1 convolution.
-   Per Lavin & Gray (CVPR 2016), each 4x4 input tile + 3x3 filter produces a
-   2x2 output tile with 16 multiplications instead of the 36 of direct conv:
-       Y = A^T [ (G g G^T) ⊙ (B^T d B) ] A
-   With B^T, G, A as defined in §3 of SOURCES_CONV.md.
-
-   We split conv into four steps:
-     (1) U[16][Cout][Cin]    = G g G^T          -- per filter, once
-     (2) V[16][Cin][T]       = B^T d B          -- per input, T = #tiles
-     (3) M[16][Cout][T]      = U[i] * V[i]      -- 16 SGEMMs
-     (4) Y_tile = A^T M[..i][o][t] A            -- write 2x2 output tile
-
-   Falls back to the direct conv when KH != 3 || KW != 3 or when OH/OW
-   are too small for the tile arithmetic to amortise. */
-
 extern void conv_packed(int, int, int, int, int, int,
                         const float*, const float*, float*);
 
@@ -44,8 +29,6 @@ static inline void wino_filter_transform(const float* g, float* u) {
     }
 }
 
-/* Input transform: v = B^T d B for one 4x4 tile d. Both matrices are
-   integer-entry so we just expand the additions/subtractions. */
 static inline void wino_input_transform(const float d[4][4], float v[4][4]) {
     float t[4][4];
     /* tmp = B^T d */
@@ -84,8 +67,6 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
         return;
     }
     int OH = H - 2, OW = W - 2;
-    /* Number of 2x2 output tiles in each dimension; the last tile may
-       extend beyond OH/OW so we handle that with a fall-back path. */
     int Th = OH / 2, Tw = OW / 2;
     if (Th == 0 || Tw == 0) {
         conv_packed(Cin, H, W, KH, KW, Cout, X, Wk, Y);
@@ -93,8 +74,6 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
     }
     int T = Th * Tw;
 
-    /* (1) Filter transform: U[16][Cout][Cin] stored as 16 contiguous
-       (Cout, Cin) matrices for the 16 SGEMM calls in step (3). */
     size_t U_bytes = (size_t)TT * Cout * Cin * sizeof(float);
     float* U = (float*)aligned_alloc(64, U_bytes);
     #pragma omp parallel for schedule(static) collapse(2)
@@ -108,8 +87,6 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
         }
     }
 
-    /* (2) Input transform: V[16][Cin][T] from X(Cin, H, W). Each 4x4 input
-       tile starts at (oh*2, ow*2) and produces 16 scalars, one per V[i]. */
     size_t V_bytes = (size_t)TT * Cin * T * sizeof(float);
     float* V = (float*)aligned_alloc(64, V_bytes);
     #pragma omp parallel for schedule(static)
@@ -132,8 +109,6 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
         }
     }
 
-    /* (3) 16 SGEMMs: M[i] = U[i] * V[i],
-       shapes Cout x Cin times Cin x T = Cout x T. */
     size_t M_bytes = (size_t)TT * Cout * T * sizeof(float);
     float* M = (float*)aligned_alloc(64, M_bytes);
     for (int i = 0; i < TT; i++) {
@@ -144,8 +119,6 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
                     Cout, T, Cin, 1.0f, Ui, Cin, Vi, T, 0.0f, Mi, T);
     }
 
-    /* (4) Output transform: per (oc, th, tw), gather the 16 M values and
-       apply Y_2x2 = A^T m A. Writes the 2x2 output tile into Y. */
     #pragma omp parallel for schedule(static) collapse(2)
     for (int oc = 0; oc < Cout; oc++) {
         for (int th = 0; th < Th; th++) {
@@ -167,11 +140,7 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
         }
     }
 
-    /* Tail: if OH/OW are odd, the last row/column of the output isn't
-       covered by the 2x2 Winograd tiles. Fill it via direct convolution. */
     if ((OH % 2) || (OW % 2)) {
-        /* Simplest: recompute the leftover strips with the reference
-           algorithm. The fraction of work is tiny (~1/OH or 1/OW). */
         for (int oc = 0; oc < Cout; oc++) {
             for (int oh = Th * 2; oh < OH; oh++) {
                 for (int ow = 0; ow < OW; ow++) {

@@ -5,23 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Crossover empirically measured on Ryzen 5 5600 with the parallelised
-   mat passes and gemm_zen3_best_omp as the base. Measured 6T uplift
-   from the previous Strassen (which used gemm_zen3_omp as base):
-     4096^3:   77 -> 234 GFLOPS  (3.0x)
-     8192^3:        267 GFLOPS  (within 2.5% of gemm_zen3_best_omp)
-   The 18 mat_add / mat_sub / mat_copy / mat_addto / mat_subfrom passes
-   are now #pragma omp parallel for over the row dimension; they go from
-   memory-bandwidth limited at single thread to ~6x faster at 6 threads. */
 #define STRASSEN_MIN 2048
 
 typedef void (*gemm_base_fn)(int, int, int, double,
                              const double*, const double*,
                              double, double*);
 
-/* All five matrix passes parallelise trivially along the row dimension.
-   At 4096^3 (m=n=2048 per pass) each touches ~64 MB; the per-pass
-   cost drops from ~6 ms serial to ~1 ms on 6 cores. */
 static void mat_add(int m, int n, const double* X, int ldx,
                     const double* Y, int ldy, double* Z, int ldz) {
     #pragma omp parallel for schedule(static)
@@ -83,9 +72,6 @@ static void mat_copy(int m, int n, const double* X, int ldx, double* Z, int ldz)
     for (int i = 0; i < m; i++) memcpy(&Z[i * ldz], &X[i * ldx], (size_t)n * sizeof(double));
 }
 
-/* Strassen-Winograd 7-multiplication schema on quadrants A=[A11 A12; A21 A22],
-   B=[B11 B12; B21 B22], C=A*B. Sub-products land in T (size m2*n2) and are
-   accumulated into the four C quadrants. */
 static void strassen_core(int M, int N, int K, double alpha,
                           const double* A, const double* B, double* C,
                           gemm_base_fn base) {
@@ -110,10 +96,6 @@ static void strassen_core(int M, int N, int K, double alpha,
     double* S2 = (double*)aligned_alloc(64, (size_t)k2 * n2 * sizeof(double));
     double* T  = (double*)aligned_alloc(64, (size_t)m2 * n2 * sizeof(double));
 
-    /* gemm_zen3 has no lda/ldb/ldc parameter — it assumes row stride equals
-       the matrix dimension. Raw quadrants (A11, A22, B11, etc.) inherit the
-       parent matrix's stride, so we copy them through the S1/S2 buffers
-       before each call. */
     mat_add(m2, k2, A11, K, A22, K, S1, k2);
     mat_add(k2, n2, B11, N, B22, N, S2, n2);
     base(m2, n2, k2, alpha, S1, S2, 0.0, T);

@@ -5,18 +5,6 @@
 #include <string.h>
 #include <unistd.h>
 
-/* Dynamic loader for libxsmm. Mirrors blis_loader.c. libxsmm provides
-   JIT'd AVX2 sgemm via libxsmm_sgemm() and direct conv via libxsmm_dnn_*.
-   We resolve the symbols we need at runtime so the build still works when
-   libxsmm isn't installed (the corresponding benchmark entry shows N/A).
-
-   Install on Arch:
-     git clone https://github.com/libxsmm/libxsmm.git
-     cd libxsmm && make -j$(nproc) STATIC=0
-     sudo install -m 644 lib/libxsmm.so /usr/local/lib/
-     sudo ldconfig
-*/
-
 static void* xsmm_handle = NULL;
 
 static void exe_dir(char* out, size_t out_size) {

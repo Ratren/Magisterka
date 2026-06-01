@@ -42,13 +42,6 @@ static BuiltinPreset builtin_presets[] = {
     {"large",  4096, 4096, 4096, 2},
     {"rank_k", 2048, 2048, 128,  20},
     {"tall_K", 128,  2048, 2048, 20},
-    /* Odd-shape preset chosen so 4x12 has no edge but 6x8 does:
-         M = 1252 = 4 * 313 (313 prime)  - 1252 mod 6 = 4 -> 6x8 4-row edge
-         N = 1500 = 12 * 5^3              - 1500 mod 8 = 4 -> 6x8 4-col edge
-         K = 257 (prime, just past KC_Z = 240, so pc loop runs an extra
-                  short tail iteration)
-       Showcases the tile-shape advantage when the trailing edge falls on
-       the unfortunate side for one kernel and not the other. */
     {"odd",    1252, 1500, 257,  20},
 };
 static const int num_builtin = sizeof(builtin_presets) / sizeof(builtin_presets[0]);
@@ -263,15 +256,6 @@ int main(int argc, char* argv[]) {
     int has_blis = blis_loader_init(nthreads);
     if (has_blis) blis_dgemm_f77 = (blis_dgemm_f77_func)blis_loader_sym("dgemm_");
 
-    /* Educational progression: naive -> loop ordering -> cache blocking ->
-       canonical 6x8 packed (BLIS-default tile) -> 4x12 packed (Zen 3 optimum)
-       -> tiny-size fast path -> three multi-thread variants showing the
-       progression from per-thread B (worst at large) to shared B (best at
-       large) to the size-aware dispatcher -> Strassen for the algorithmic
-       FLOP saving -> vendor BLAS for comparison. Variants that didn't
-       contribute meaningful insight (sched, ST tuned dispatcher,
-       microkernels-as-baselines) were dropped; they remain in the source
-       tree for reference. */
     Impl impls[NUM_IMPLEMENTATIONS] = {
         {"Naive",             gemm_naive,         {0}, 0, 0, 0, 0, 0},
         {"Loop Reorder ikj",  gemm_ikj,           {0}, 0, 0, 0, 0, 0},

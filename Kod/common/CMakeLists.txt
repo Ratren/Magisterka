@@ -9,6 +9,7 @@ add_library(common STATIC
     stats.c
     sysinfo.c
     blis_loader.c
+    conv_libxsmm_loader.c
     preset.c
     json_out.c
     runner.c

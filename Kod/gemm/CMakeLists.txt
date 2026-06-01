@@ -26,6 +26,13 @@ add_library(gemm_impl STATIC
     gemm_microkernel.c
     gemm_packed.c
     gemm_omp.c
+    gemm_zen3.c
+    gemm_zen3_sched.c
+    gemm_zen3_par.c
+    gemm_zen3_tuned.c
+    gemm_zen3_tiny.c
+    gemm_zen3_best.c
+    gemm_strassen.c
 )
 target_link_libraries(gemm_impl PUBLIC OpenMP::OpenMP_C)
 

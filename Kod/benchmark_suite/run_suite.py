@@ -77,10 +77,15 @@ def run_kernel(kernel: str, preset_file: Path, json_out: Path,
 
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(threads)
-    blis_lib = ROOT / "blis_install" / "lib"
-    if blis_lib.is_dir():
+    extra_lib_dirs = []
+    for sub in ("blis_install/lib", "libxsmm_install/lib"):
+        d = ROOT / sub
+        if d.is_dir():
+            extra_lib_dirs.append(str(d))
+    if extra_lib_dirs:
         existing = env.get("LD_LIBRARY_PATH", "")
-        env["LD_LIBRARY_PATH"] = f"{blis_lib}:{existing}" if existing else str(blis_lib)
+        joined = ":".join(extra_lib_dirs)
+        env["LD_LIBRARY_PATH"] = f"{joined}:{existing}" if existing else joined
 
     print(f"   $ OMP_NUM_THREADS={threads} {' '.join(cmd)}")
     with log_path.open("w") as lf:

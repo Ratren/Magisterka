@@ -12,16 +12,6 @@ static inline int gemm_round_up(int x, int m) { return ((x + m - 1) / m) * m; }
 
 void gemm_apply_beta(int M, int N, double beta, double* C);
 
-void dgemm_ukr_6x8(int kc,
-                   const double* __restrict A_pack,
-                   const double* __restrict B_pack,
-                   double* __restrict C, int ldc);
-
-void dgemm_ukr_6x8_edge(int kc, int mr, int nr,
-                        const double* __restrict A_pack,
-                        const double* __restrict B_pack,
-                        double* __restrict C, int ldc);
-
 void pack_A_panel(int mc, int kc,
                   const double* A, int lda,
                   double* A_pack);
@@ -33,5 +23,23 @@ void pack_B_panel(int kc, int nc,
 void macrokernel(int mc, int nc, int kc,
                  const double* A_pack, const double* B_pack,
                  double* C, int ldc);
+
+#define MR_Z 4
+#define NR_Z 12
+#define MC_Z 192
+#define KC_Z 240
+#define NC_Z 4080
+
+void pack_A_panel_z(int mc, int kc,
+                    const double* A, int lda,
+                    double* A_pack);
+
+void pack_B_panel_z(int kc, int nc,
+                    const double* B, int ldb,
+                    double* B_pack);
+
+void macrokernel_z(int mc, int nc, int kc,
+                   const double* A_pack, const double* B_pack,
+                   double* C, int ldc);
 
 #endif

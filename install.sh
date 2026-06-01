@@ -7,22 +7,29 @@
 #      benchmark executables link against it at compile time).
 #   3. Optionally builds BLIS from source into Kod/blis_install (loaded at
 #      runtime via dlopen; only needed for the BLIS comparison columns).
-#   4. Configures and builds each kernel module (dot_product, gemv, gemm, conv)
+#   4. Optionally builds libxsmm from source into Kod/libxsmm_install (loaded
+#      at runtime via dlopen; used by conv as the correctness reference and
+#      as the "libxsmm" benchmark row).
+#   5. Configures and builds each kernel module (dot_product, gemv, gemm, conv)
 #      with CMake into Kod/<module>/build/benchmark.
 #
 # Usage:
-#   ./install.sh [--with-blis] [--skip-openblas] [--skip-blis]
-#                [--jobs N] [--openblas-tag TAG] [--blis-tag TAG]
+#   ./install.sh [--with-blis] [--with-libxsmm]
+#                [--skip-openblas] [--skip-blis] [--skip-libxsmm]
+#                [--jobs N] [--openblas-tag TAG] [--blis-tag TAG] [--libxsmm-tag TAG]
 #
-# Defaults: build OpenBLAS, skip BLIS, use $(nproc) jobs.
+# Defaults: build OpenBLAS, skip BLIS, skip libxsmm, use $(nproc) jobs.
 
 set -euo pipefail
 
 OPENBLAS_TAG="v0.3.31"
 BLIS_TAG="5.2.0"
+LIBXSMM_TAG="main"
 WITH_BLIS=0
+WITH_LIBXSMM=0
 SKIP_OPENBLAS=0
 SKIP_BLIS=0
+SKIP_LIBXSMM=0
 JOBS="$(nproc 2>/dev/null || echo 4)"
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -31,6 +38,8 @@ OPENBLAS_SRC="$KOD_DIR/openblas_src"
 OPENBLAS_INSTALL="$KOD_DIR/openblas_install"
 BLIS_SRC="$KOD_DIR/blis_src"
 BLIS_INSTALL="$KOD_DIR/blis_install"
+LIBXSMM_SRC="$KOD_DIR/libxsmm_src"
+LIBXSMM_INSTALL="$KOD_DIR/libxsmm_install"
 
 KERNELS=(dot_product gemv gemm conv)
 
@@ -46,14 +55,18 @@ usage() {
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --with-blis)       WITH_BLIS=1 ;;
+        --with-libxsmm)    WITH_LIBXSMM=1 ;;
         --skip-openblas)   SKIP_OPENBLAS=1 ;;
         --skip-blis)       SKIP_BLIS=1 ;;
+        --skip-libxsmm)    SKIP_LIBXSMM=1 ;;
         --jobs)            JOBS="${2:?--jobs needs a value}"; shift ;;
         --jobs=*)          JOBS="${1#*=}" ;;
         --openblas-tag)    OPENBLAS_TAG="${2:?}"; shift ;;
         --openblas-tag=*)  OPENBLAS_TAG="${1#*=}" ;;
         --blis-tag)        BLIS_TAG="${2:?}"; shift ;;
         --blis-tag=*)      BLIS_TAG="${1#*=}" ;;
+        --libxsmm-tag)     LIBXSMM_TAG="${2:?}"; shift ;;
+        --libxsmm-tag=*)   LIBXSMM_TAG="${1#*=}" ;;
         -h|--help)         usage ;;
         *) die "unknown argument: $1 (use --help)" ;;
     esac
@@ -105,6 +118,11 @@ build_openblas() {
     mkdir -p "$KOD_DIR"
     clone_or_update https://github.com/OpenMathLib/OpenBLAS.git "$OPENBLAS_SRC" "$OPENBLAS_TAG"
 
+    # Wipe stale .o/.a from a previous build — LTO bytecode is GCC-version
+    # specific, so any pre-existing artefact will break the final link when
+    # the host gcc has been upgraded since.
+    make -C "$OPENBLAS_SRC" clean >/dev/null 2>&1 || true
+
     make -C "$OPENBLAS_SRC" -j"$JOBS" \
          USE_OPENMP=1 NUM_THREADS=64 DYNAMIC_ARCH=0 TARGET=ZEN \
          CFLAGS="-O3" >/dev/null
@@ -123,12 +141,32 @@ build_blis() {
     clone_or_update https://github.com/amd/blis.git "$BLIS_SRC" "$BLIS_TAG"
 
     pushd "$BLIS_SRC" >/dev/null
+    make clean >/dev/null 2>&1 || true
     ./configure --prefix="$BLIS_INSTALL" --enable-threading=openmp \
                 --enable-cblas --enable-shared zen3 >/dev/null
     make -j"$JOBS" >/dev/null
     make install >/dev/null
     popd >/dev/null
     log "  BLIS installed (libblis-mt.so at $BLIS_INSTALL/lib)."
+}
+
+build_libxsmm() {
+    if (( ! WITH_LIBXSMM )) || (( SKIP_LIBXSMM )); then
+        log "Skipping libxsmm (pass --with-libxsmm to include it)."
+        return
+    fi
+
+    log "Building libxsmm $LIBXSMM_TAG -> $LIBXSMM_INSTALL"
+    mkdir -p "$KOD_DIR"
+    clone_or_update https://github.com/libxsmm/libxsmm.git "$LIBXSMM_SRC" "$LIBXSMM_TAG"
+
+    # libxsmm has no configure step -- AVX2 codegen is selected at JIT time.
+    # STATIC=0 builds the shared object; the conv benchmark dlopens it.
+    make -C "$LIBXSMM_SRC" clean >/dev/null 2>&1 || true
+    make -C "$LIBXSMM_SRC" -j"$JOBS" STATIC=0 >/dev/null
+    mkdir -p "$LIBXSMM_INSTALL/lib"
+    cp -p "$LIBXSMM_SRC"/lib/libxsmm.so* "$LIBXSMM_INSTALL/lib/"
+    log "  libxsmm installed (libxsmm.so at $LIBXSMM_INSTALL/lib)."
 }
 
 build_kernels() {
@@ -148,6 +186,7 @@ main() {
     check_tools
     build_openblas
     build_blis
+    build_libxsmm
     build_kernels
 
     cat <<EOF
@@ -173,6 +212,14 @@ EOF
    BLIS was installed. The benchmark binaries discover it via dlopen from
    Kod/blis_install/lib at runtime — no extra LD_LIBRARY_PATH is needed
    when launching from a kernel build/ directory.
+
+EOF
+    fi
+    if (( WITH_LIBXSMM )); then
+        cat <<EOF
+   libxsmm was installed. The conv benchmark dlopens libxsmm.so from
+   Kod/libxsmm_install/lib at runtime and uses it both as the
+   "libxsmm" benchmark entry and as the correctness reference.
 
 EOF
     fi

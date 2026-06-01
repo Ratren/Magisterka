@@ -27,8 +27,13 @@ add_library(conv_impl STATIC
     conv_packed.c
     conv_im2col_gemm.c
     conv_omp.c
+    conv_1x1.c
+    conv_nchwc.c
+    conv_winograd.c
+    conv_libxsmm.c
+    conv_zen3.c
 )
-target_link_libraries(conv_impl PUBLIC OpenMP::OpenMP_C)
+target_link_libraries(conv_impl PUBLIC OpenMP::OpenMP_C common)
 
 set(OPENBLAS_ROOT ${CMAKE_SOURCE_DIR}/../openblas_install)
 

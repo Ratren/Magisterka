@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <omp.h>
 #include "common.h"
 #include "gemm.h"
@@ -11,7 +10,7 @@ extern void openblas_set_num_threads(int num_threads);
 extern int  openblas_get_num_threads(void);
 extern void goto_set_num_threads(int num_threads);
 
-#define NUM_IMPLEMENTATIONS 8
+#define NUM_IMPLEMENTATIONS 13
 #define NUM_RUNS 5
 #define WARMUP_ITERATIONS 3
 
@@ -43,6 +42,14 @@ static BuiltinPreset builtin_presets[] = {
     {"large",  4096, 4096, 4096, 2},
     {"rank_k", 2048, 2048, 128,  20},
     {"tall_K", 128,  2048, 2048, 20},
+    /* Odd-shape preset chosen so 4x12 has no edge but 6x8 does:
+         M = 1252 = 4 * 313 (313 prime)  - 1252 mod 6 = 4 -> 6x8 4-row edge
+         N = 1500 = 12 * 5^3              - 1500 mod 8 = 4 -> 6x8 4-col edge
+         K = 257 (prime, just past KC_Z = 240, so pc loop runs an extra
+                  short tail iteration)
+       Showcases the tile-shape advantage when the trailing edge falls on
+       the unfortunate side for one kernel and not the other. */
+    {"odd",    1252, 1500, 257,  20},
 };
 static const int num_builtin = sizeof(builtin_presets) / sizeof(builtin_presets[0]);
 
@@ -256,22 +263,36 @@ int main(int argc, char* argv[]) {
     int has_blis = blis_loader_init(nthreads);
     if (has_blis) blis_dgemm_f77 = (blis_dgemm_f77_func)blis_loader_sym("dgemm_");
 
+    /* Educational progression: naive -> loop ordering -> cache blocking ->
+       canonical 6x8 packed (BLIS-default tile) -> 4x12 packed (Zen 3 optimum)
+       -> tiny-size fast path -> three multi-thread variants showing the
+       progression from per-thread B (worst at large) to shared B (best at
+       large) to the size-aware dispatcher -> Strassen for the algorithmic
+       FLOP saving -> vendor BLAS for comparison. Variants that didn't
+       contribute meaningful insight (sched, ST tuned dispatcher,
+       microkernels-as-baselines) were dropped; they remain in the source
+       tree for reference. */
     Impl impls[NUM_IMPLEMENTATIONS] = {
-        {"Naive",            gemm_naive,        {0}, 0, 0, 0, 0, 0},
-        {"Loop Reorder ikj", gemm_ikj,          {0}, 0, 0, 0, 0, 0},
-        {"Blocked",          gemm_blocked,      {0}, 0, 0, 0, 0, 0},
-        {"Microkernel 6x8",  gemm_microkernel,  {0}, 0, 0, 0, 0, 0},
-        {"Packed (Goto)",    gemm_packed,       {0}, 0, 0, 0, 0, 0},
-        {"OMP Packed",       gemm_omp,          {0}, 0, 0, 0, 0, 0},
-        {"OpenBLAS",         openblas_wrapper,  {0}, 0, 0, 0, 0, 0},
-        {"BLIS",             blis_wrapper,      {0}, 0, 0, 0, 0, 0},
+        {"Naive",             gemm_naive,         {0}, 0, 0, 0, 0, 0},
+        {"Loop Reorder ikj",  gemm_ikj,           {0}, 0, 0, 0, 0, 0},
+        {"Blocked",           gemm_blocked,       {0}, 0, 0, 0, 0, 0},
+        {"ST 6x8 packed",     gemm_packed,        {0}, 0, 0, 0, 0, 0},
+        {"MT 6x8 packed",     gemm_omp,           {0}, 0, 0, 0, 0, 0},
+        {"ST 4x12 packed",    gemm_zen3,          {0}, 0, 0, 0, 0, 0},
+        {"ST 4x12 tiny",      gemm_zen3_tiny,     {0}, 0, 0, 0, 0, 0},
+        {"MT 4x12 per-thread B", gemm_zen3_omp,   {0}, 0, 0, 0, 0, 0},
+        {"MT 4x12 shared B",  gemm_zen3_par_omp,  {0}, 0, 0, 0, 0, 0},
+        {"MT 4x12 best",      gemm_zen3_best_omp, {0}, 0, 0, 0, 0, 0},
+        {"MT Strassen",       gemm_strassen_omp,  {0}, 0, 0, 0, 0, 0},
+        {"OpenBLAS",          openblas_wrapper,   {0}, 0, 0, 0, 0, 0},
+        {"BLIS",              blis_wrapper,       {0}, 0, 0, 0, 0, 0},
     };
     char openblas_name[32], blis_name_buf[32];
     snprintf(openblas_name, sizeof(openblas_name), "OpenBLAS (%dT)", nthreads);
     snprintf(blis_name_buf, sizeof(blis_name_buf), "BLIS (%dT)%s",
              nthreads, blis_dgemm_f77 ? "" : " N/A");
-    impls[6].name = openblas_name;
-    impls[7].name = blis_name_buf;
+    impls[11].name = openblas_name;
+    impls[12].name = blis_name_buf;
 
     const char* json_path = NULL;
     const char* preset_file = NULL;

@@ -21,6 +21,11 @@ void   blis_loader_shutdown(void);
 void*  blis_loader_sym(const char* name);
 int    blis_loader_ok(void);
 
+int    libxsmm_loader_init(void);
+void   libxsmm_loader_shutdown(void);
+void*  libxsmm_loader_sym(const char* name);
+int    libxsmm_loader_ok(void);
+
 typedef struct PresetKV {
     char* key;
     char* value;

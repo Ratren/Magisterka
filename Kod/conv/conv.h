@@ -34,4 +34,22 @@ void conv_im2col_blis (int Cin, int H, int W, int KH, int KW, int Cout,
 void conv_omp         (int Cin, int H, int W, int KH, int KW, int Cout,
                        const float* X, const float* Wk, float* Y);
 
+void conv_1x1         (int Cin, int H, int W, int KH, int KW, int Cout,
+                       const float* X, const float* Wk, float* Y);
+
+void conv_nchwc       (int Cin, int H, int W, int KH, int KW, int Cout,
+                       const float* X, const float* Wk, float* Y);
+
+void conv_winograd    (int Cin, int H, int W, int KH, int KW, int Cout,
+                       const float* X, const float* Wk, float* Y);
+
+void conv_libxsmm     (int Cin, int H, int W, int KH, int KW, int Cout,
+                       const float* X, const float* Wk, float* Y);
+
+void conv_zen3        (int Cin, int H, int W, int KH, int KW, int Cout,
+                       const float* X, const float* Wk, float* Y);
+
+void conv_zen3_omp    (int Cin, int H, int W, int KH, int KW, int Cout,
+                       const float* X, const float* Wk, float* Y);
+
 #endif

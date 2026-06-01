@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <omp.h>
 #include "common.h"
 #include "conv.h"
@@ -18,7 +17,7 @@ typedef void (*blis_sgemm_f77_func)(const char*, const char*,
                                     const float*, float*, const int*);
 blis_sgemm_f77_func conv_blis_sgemm_f77 = NULL;
 
-#define NUM_IMPLEMENTATIONS 8
+#define NUM_IMPLEMENTATIONS 12
 #define NUM_RUNS 5
 #define WARMUP_ITERATIONS 3
 #define BUDGET_PER_RUN_SEC 1.0
@@ -133,12 +132,23 @@ static void run_case(int Cin, int H, int W, int K, int Cout, int iterations,
     gen_float_arr(X, xSize);
     gen_float_arr(Wk, wSize);
 
+    /* Reference: libxsmm when available (its JIT'd AVX2 conv is the most
+       trustworthy fp32 ground truth we have), else fall back to OpenBLAS
+       SGEMM via im2col. conv_naive is too slow at the larger presets. */
     memset(Y_ref, 0, ySize * sizeof(float));
-    conv_im2col_openblas(Cin, H, W, K, K, Cout, X, Wk, Y_ref);
+    if (libxsmm_loader_ok()) {
+        conv_libxsmm(Cin, H, W, K, K, Cout, X, Wk, Y_ref);
+    } else {
+        conv_im2col_openblas(Cin, H, W, K, K, Cout, X, Wk, Y_ref);
+    }
 
     for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) {
         printf("  [%d/%d] %-22s", i + 1, NUM_IMPLEMENTATIONS, impls[i].name);
         fflush(stdout);
+        if (impls[i].func == conv_libxsmm && !libxsmm_loader_ok()) {
+            printf(" SKIPPED (libxsmm not loaded)\n");
+            continue;
+        }
         if (impls[i].func == conv_im2col_blis && !conv_blis_sgemm_f77) {
             printf(" SKIPPED (BLIS not loaded)\n");
             continue;
@@ -235,23 +245,34 @@ int main(int argc, char* argv[]) {
     goto_set_num_threads(nthreads);
     int has_blis = blis_loader_init(nthreads);
     if (has_blis) conv_blis_sgemm_f77 = (blis_sgemm_f77_func)blis_loader_sym("sgemm_");
+    int has_xsmm = libxsmm_loader_init();
 
+    /* Order: least to most optimised, then vendor comparisons at the end.
+       Microkernel and ST Zen3 dispatch are still in the source tree but
+       dropped from this list (subsumed by Packed Direct / Zen3 OMP). */
     Impl impls[NUM_IMPLEMENTATIONS] = {
         {"Naive",              conv_naive,           {0}, 0, 0, 0, 0, 0},
         {"Loop Reorder",       conv_reorder,         {0}, 0, 0, 0, 0, 0},
         {"Blocked",            conv_blocked,         {0}, 0, 0, 0, 0, 0},
-        {"Microkernel 6x16",   conv_microkernel,     {0}, 0, 0, 0, 0, 0},
         {"Packed Direct",      conv_packed,          {0}, 0, 0, 0, 0, 0},
         {"OMP Packed",         conv_omp,             {0}, 0, 0, 0, 0, 0},
+        {"NCHWc direct",       conv_nchwc,           {0}, 0, 0, 0, 0, 0},
+        {"1x1 (SGEMM)",        conv_1x1,             {0}, 0, 0, 0, 0, 0},
+        {"Winograd F(2,3)",    conv_winograd,        {0}, 0, 0, 0, 0, 0},
+        {"Zen3 dispatch OMP",  conv_zen3_omp,        {0}, 0, 0, 0, 0, 0},
         {"im2col + OpenBLAS",  conv_im2col_openblas, {0}, 0, 0, 0, 0, 0},
         {"im2col + BLIS",      conv_im2col_blis,     {0}, 0, 0, 0, 0, 0},
+        {"libxsmm",            conv_libxsmm,         {0}, 0, 0, 0, 0, 0},
     };
-    char openblas_name[40], blis_name_buf[40];
+    char openblas_name[40], blis_name_buf[40], xsmm_name_buf[40];
     snprintf(openblas_name, sizeof(openblas_name), "im2col + OpenBLAS (%dT)", nthreads);
     snprintf(blis_name_buf, sizeof(blis_name_buf), "im2col + BLIS (%dT)%s",
              nthreads, conv_blis_sgemm_f77 ? "" : " N/A");
-    impls[6].name = openblas_name;
-    impls[7].name = blis_name_buf;
+    snprintf(xsmm_name_buf, sizeof(xsmm_name_buf), "libxsmm%s",
+             has_xsmm ? "" : " N/A");
+    impls[9].name = openblas_name;
+    impls[10].name = blis_name_buf;
+    impls[11].name = xsmm_name_buf;
 
     const char* json_path = NULL;
     const char* preset_file = NULL;
@@ -348,5 +369,6 @@ int main(int argc, char* argv[]) {
 cleanup:
     if (results) { bench_free_results(results, num_results); free(results); }
     blis_loader_shutdown();
+    libxsmm_loader_shutdown();
     return rc;
 }

@@ -34,6 +34,9 @@ void conv_1x1         (int Cin, int H, int W, int KH, int KW, int Cout,
 void conv_nchwc       (int Cin, int H, int W, int KH, int KW, int Cout,
                        const float* X, const float* Wk, float* Y);
 
+void conv_oc_blocked  (int Cin, int H, int W, int KH, int KW, int Cout,
+                       const float* X, const float* Wk, float* Y);
+
 void conv_winograd    (int Cin, int H, int W, int KH, int KW, int Cout,
                        const float* X, const float* Wk, float* Y);
 

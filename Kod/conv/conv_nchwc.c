@@ -62,7 +62,9 @@ static void reorder_W_to_blocked(int Cout, int Cin, int KH, int KW,
 void conv_nchwc(int Cin, int H, int W, int KH, int KW, int Cout,
                 const float* X, const float* Wk, float* Y) {
     if ((Cin % CB) != 0 || (Cout % CB) != 0) {
-        conv_packed(Cin, H, W, KH, KW, Cout, X, Wk, Y);
+        /* Brak pelnego bloku kanalow (np. RGB, Cin=3): bezposrednie mikrojadro
+         * blokowane po kanalach wyjscia (zamiast skromnego conv_packed). */
+        conv_oc_blocked(Cin, H, W, KH, KW, Cout, X, Wk, Y);
         return;
     }
     int OH = H - KH + 1;

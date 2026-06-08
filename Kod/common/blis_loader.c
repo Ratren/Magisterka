@@ -46,7 +46,7 @@ int blis_loader_init(int nthreads) {
     }
 
     if (!blis_handle) {
-        fprintf(stderr, "BLIS not found: %s\n", dlerror());
+        fprintf(stderr, "AOCL-BLAS not found: %s\n", dlerror());
         return 0;
     }
     blis_set_threads_func set_threads =

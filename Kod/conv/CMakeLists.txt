@@ -29,6 +29,7 @@ add_library(conv_impl STATIC
     conv_omp.c
     conv_1x1.c
     conv_nchwc.c
+    conv_oc_blocked.c
     conv_winograd.c
     conv_libxsmm.c
     conv_zen3.c

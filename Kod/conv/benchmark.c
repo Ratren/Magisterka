@@ -48,6 +48,10 @@ static BuiltinPreset builtin_presets[] = {
     {"pointwise", 128, 56,  56,  1, 128, 50},
     {"kernel5",   32,  64,  64,  5, 32,  50},
     {"kernel7",   64,  112, 112, 7, 64,  20},
+    {"rgb3x3",    3,   224, 224, 3, 64,  20},
+    {"rgb5x5",    3,   128, 128, 5, 32,  50},
+    {"rgb7x7",    3,   120, 120, 7, 64,  20},
+    {"rgb_fhd",   3,   1080, 1920, 3, 64, 10},
 };
 static const int num_builtin = sizeof(builtin_presets) / sizeof(builtin_presets[0]);
 
@@ -147,7 +151,7 @@ static void run_case(int Cin, int H, int W, int K, int Cout, int iterations,
             continue;
         }
         if (impls[i].func == conv_im2col_blis && !conv_blis_sgemm_f77) {
-            printf(" SKIPPED (BLIS not loaded)\n");
+            printf(" SKIPPED (AOCL-BLAS not loaded)\n");
             continue;
         }
         memset(Y, 0, ySize * sizeof(float));
@@ -255,12 +259,12 @@ int main(int argc, char* argv[]) {
         {"Winograd F(2,3)",    conv_winograd,        {0}, 0, 0, 0, 0, 0},
         {"Zen3 dispatch OMP",  conv_zen3_omp,        {0}, 0, 0, 0, 0, 0},
         {"im2col + OpenBLAS",  conv_im2col_openblas, {0}, 0, 0, 0, 0, 0},
-        {"im2col + BLIS",      conv_im2col_blis,     {0}, 0, 0, 0, 0, 0},
+        {"im2col + AOCL-BLAS",      conv_im2col_blis,     {0}, 0, 0, 0, 0, 0},
         {"libxsmm",            conv_libxsmm,         {0}, 0, 0, 0, 0, 0},
     };
     char openblas_name[40], blis_name_buf[40], xsmm_name_buf[40];
     snprintf(openblas_name, sizeof(openblas_name), "im2col + OpenBLAS (%dT)", nthreads);
-    snprintf(blis_name_buf, sizeof(blis_name_buf), "im2col + BLIS (%dT)%s",
+    snprintf(blis_name_buf, sizeof(blis_name_buf), "im2col + AOCL-BLAS (%dT)%s",
              nthreads, conv_blis_sgemm_f77 ? "" : " N/A");
     snprintf(xsmm_name_buf, sizeof(xsmm_name_buf), "libxsmm%s",
              has_xsmm ? "" : " N/A");
@@ -295,7 +299,7 @@ int main(int argc, char* argv[]) {
     }
 
     print_system_header("Convolution Benchmark");
-    printf("Threads: OMP=%d, OpenBLAS=%d, BLIS=%s\n",
+    printf("Threads: OMP=%d, OpenBLAS=%d, AOCL-BLAS=%s\n",
            omp_get_max_threads(), openblas_get_num_threads(),
            has_blis ? "loaded" : "not found");
 

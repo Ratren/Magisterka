@@ -27,6 +27,7 @@ add_library(gemm_impl STATIC
     gemm_packed.c
     gemm_omp.c
     gemm_zen3.c
+    gemm_zen3_intrin.c
     gemm_zen3_sched.c
     gemm_zen3_par.c
     gemm_zen3_tuned.c

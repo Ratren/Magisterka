@@ -149,7 +149,7 @@ static void run_case(int rows, int cols, int iterations, Impl* impls) {
         printf("  [%d/%d] %-20s", i + 1, NUM_IMPLEMENTATIONS, impls[i].name);
         fflush(stdout);
         if (impls[i].func == blis_wrapper && !blis_dgemv_f77) {
-            printf(" SKIPPED (BLIS not loaded)\n");
+            printf(" SKIPPED (AOCL-BLAS not loaded)\n");
             continue;
         }
         int ok = measure_one(&impls[i], rows, cols, iterations, A, x, y, y_ref, alpha, beta);
@@ -254,11 +254,11 @@ int main(int argc, char* argv[]) {
         {"AVX+FMA V3",      gemv_avx_fma_v3,      {0}, 0, 0, 0, 0, 0},
         {"AVX+FMA V3_OMP",  gemv_avx_fma_v3_omp,  {0}, 0, 0, 0, 0, 0},
         {"OpenBLAS",        openblas_wrapper,     {0}, 0, 0, 0, 0, 0},
-        {"BLIS",            blis_wrapper,         {0}, 0, 0, 0, 0, 0},
+        {"AOCL-BLAS",            blis_wrapper,         {0}, 0, 0, 0, 0, 0},
     };
     char openblas_name[32], blis_name_buf[32];
     snprintf(openblas_name, sizeof(openblas_name), "OpenBLAS (%dT)", nthreads);
-    snprintf(blis_name_buf, sizeof(blis_name_buf), "BLIS (%dT)%s",
+    snprintf(blis_name_buf, sizeof(blis_name_buf), "AOCL-BLAS (%dT)%s",
              nthreads, blis_dgemv_f77 ? "" : " N/A");
     impls[7].name = openblas_name;
     impls[8].name = blis_name_buf;
@@ -290,7 +290,7 @@ int main(int argc, char* argv[]) {
     }
 
     print_system_header("GEMV Benchmark");
-    printf("Threads: OMP=%d, OpenBLAS=%d, BLIS=%s\n",
+    printf("Threads: OMP=%d, OpenBLAS=%d, AOCL-BLAS=%s\n",
            omp_get_max_threads(), openblas_get_num_threads(),
            has_blis ? "loaded" : "not found");
 

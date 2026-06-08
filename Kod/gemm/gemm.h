@@ -33,6 +33,10 @@ void gemm_zen3        (int M, int N, int K, double alpha,
                        const double* A, const double* B,
                        double beta, double* C);
 
+void gemm_zen3_intrin (int M, int N, int K, double alpha,
+                       const double* A, const double* B,
+                       double beta, double* C);
+
 void gemm_zen3_omp    (int M, int N, int K, double alpha,
                        const double* A, const double* B,
                        double beta, double* C);

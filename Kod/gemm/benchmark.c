@@ -10,7 +10,7 @@ extern void openblas_set_num_threads(int num_threads);
 extern int  openblas_get_num_threads(void);
 extern void goto_set_num_threads(int num_threads);
 
-#define NUM_IMPLEMENTATIONS 13
+#define NUM_IMPLEMENTATIONS 14
 #define NUM_RUNS 5
 #define WARMUP_ITERATIONS 3
 
@@ -157,7 +157,7 @@ static void run_case(int M, int N, int K, int iterations, Impl* impls) {
         printf("  [%d/%d] %-20s", i + 1, NUM_IMPLEMENTATIONS, impls[i].name);
         fflush(stdout);
         if (impls[i].func == blis_wrapper && !blis_dgemm_f77) {
-            printf(" SKIPPED (BLIS not loaded)\n");
+            printf(" SKIPPED (AOCL-BLAS not loaded)\n");
             continue;
         }
         memset(C, 0, cSize * sizeof(double));
@@ -263,20 +263,21 @@ int main(int argc, char* argv[]) {
         {"ST 6x8 packed",     gemm_packed,        {0}, 0, 0, 0, 0, 0},
         {"MT 6x8 packed",     gemm_omp,           {0}, 0, 0, 0, 0, 0},
         {"ST 4x12 packed",    gemm_zen3,          {0}, 0, 0, 0, 0, 0},
+        {"ST 4x12 intrinsics", gemm_zen3_intrin,  {0}, 0, 0, 0, 0, 0},
         {"ST 4x12 tiny",      gemm_zen3_tiny,     {0}, 0, 0, 0, 0, 0},
         {"MT 4x12 per-thread B", gemm_zen3_omp,   {0}, 0, 0, 0, 0, 0},
         {"MT 4x12 shared B",  gemm_zen3_par_omp,  {0}, 0, 0, 0, 0, 0},
         {"MT 4x12 best",      gemm_zen3_best_omp, {0}, 0, 0, 0, 0, 0},
         {"MT Strassen",       gemm_strassen_omp,  {0}, 0, 0, 0, 0, 0},
         {"OpenBLAS",          openblas_wrapper,   {0}, 0, 0, 0, 0, 0},
-        {"BLIS",              blis_wrapper,       {0}, 0, 0, 0, 0, 0},
+        {"AOCL-BLAS",              blis_wrapper,       {0}, 0, 0, 0, 0, 0},
     };
     char openblas_name[32], blis_name_buf[32];
     snprintf(openblas_name, sizeof(openblas_name), "OpenBLAS (%dT)", nthreads);
-    snprintf(blis_name_buf, sizeof(blis_name_buf), "BLIS (%dT)%s",
+    snprintf(blis_name_buf, sizeof(blis_name_buf), "AOCL-BLAS (%dT)%s",
              nthreads, blis_dgemm_f77 ? "" : " N/A");
-    impls[11].name = openblas_name;
-    impls[12].name = blis_name_buf;
+    impls[12].name = openblas_name;
+    impls[13].name = blis_name_buf;
 
     const char* json_path = NULL;
     const char* preset_file = NULL;
@@ -306,7 +307,7 @@ int main(int argc, char* argv[]) {
     }
 
     print_system_header("GEMM Benchmark");
-    printf("Threads: OMP=%d, OpenBLAS=%d, BLIS=%s\n",
+    printf("Threads: OMP=%d, OpenBLAS=%d, AOCL-BLAS=%s\n",
            omp_get_max_threads(), openblas_get_num_threads(),
            has_blis ? "loaded" : "not found");
 

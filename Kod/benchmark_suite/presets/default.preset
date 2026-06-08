@@ -174,3 +174,39 @@ w = 112
 k = 7
 cout = 64
 iterations = 20
+
+[conv_rgb3x3]
+kernel = conv
+cin = 3
+h = 224
+w = 224
+k = 3
+cout = 64
+iterations = 20
+
+[conv_rgb5x5]
+kernel = conv
+cin = 3
+h = 128
+w = 128
+k = 5
+cout = 32
+iterations = 50
+
+[conv_rgb7x7]
+kernel = conv
+cin = 3
+h = 120
+w = 120
+k = 7
+cout = 64
+iterations = 20
+
+[conv_rgb_fhd]
+kernel = conv
+cin = 3
+h = 1080
+w = 1920
+k = 3
+cout = 64
+iterations = 10

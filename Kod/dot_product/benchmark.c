@@ -130,7 +130,7 @@ static void run_case(size_t n, int iterations, Impl* impls) {
         printf("  [%d/%d] %-20s", i + 1, NUM_IMPLEMENTATIONS, impls[i].name);
         fflush(stdout);
         if (impls[i].func == blis_wrapper && !blis_ddot_f77) {
-            printf(" SKIPPED (BLIS not loaded)\n");
+            printf(" SKIPPED (AOCL-BLAS not loaded)\n");
             continue;
         }
         int ok = measure_one(&impls[i], a, b, n, iterations, ref);
@@ -230,11 +230,11 @@ int main(int argc, char* argv[]) {
         {"SIMD MultiAcc", dot_simd_multiacc, {0}, 0, 0, 0, 0, 0},
         {"OMP",           dot_omp,           {0}, 0, 0, 0, 0, 0},
         {"OpenBLAS",      openblas_wrapper,  {0}, 0, 0, 0, 0, 0},
-        {"BLIS",          blis_wrapper,      {0}, 0, 0, 0, 0, 0},
+        {"AOCL-BLAS",          blis_wrapper,      {0}, 0, 0, 0, 0, 0},
     };
     char openblas_name[32], blis_name_buf[32];
     snprintf(openblas_name, sizeof(openblas_name), "OpenBLAS (%dT)", nthreads);
-    snprintf(blis_name_buf, sizeof(blis_name_buf), "BLIS (%dT)%s",
+    snprintf(blis_name_buf, sizeof(blis_name_buf), "AOCL-BLAS (%dT)%s",
              nthreads, blis_ddot_f77 ? "" : " N/A");
     impls[4].name = openblas_name;
     impls[5].name = blis_name_buf;
@@ -266,7 +266,7 @@ int main(int argc, char* argv[]) {
     }
 
     print_system_header("Dot Product Benchmark");
-    printf("Threads: OMP=%d, OpenBLAS=%d, BLIS=%s\n",
+    printf("Threads: OMP=%d, OpenBLAS=%d, AOCL-BLAS=%s\n",
            omp_get_max_threads(), openblas_get_num_threads(),
            has_blis ? "loaded" : "not found");
 

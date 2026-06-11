@@ -52,7 +52,7 @@
 % definicje nagłówków i stopek
 \pagestyle{fancy}
 \renewcommand{\chaptermark}[1]{\markboth{#1}{}}
-\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\renewcommand{\mark}[1]{\markright{\thesection\ #1}}
 \fancyhf{}
 \fancyhead[LE,RO]{\footnotesize\bfseries\thepage}
 \fancyhead[LO]{\footnotesize\rightmark}
@@ -135,7 +135,7 @@
 \chapter{Hierarchia pamięci i jednostki obliczeniowe procesora}
 \label{chap:hierarchia}
 
-\section{Motywacja: kompromis szybkość--pojemność--koszt i ,,ściana pamięci''}
+\section{Motywacja}
 \label{sec:motywacja}
 
 Wydajność współczesnych programów obliczeniowych tylko w części zależy od liczby operacji arytmetycznych, jakie procesor jest w stanie wykonać w określonym czasie. Równie istotne --- a w wielu zastosowaniach decydujące --- jest tempo, w jakim dane docierają do jednostek wykonawczych. Aby zrozumieć, dlaczego tak się dzieje, należy przyjrzeć się ograniczeniom samej pamięci.
@@ -504,7 +504,7 @@ Ostatnią z omawianych technik jest \emph{zamiana kolejności pętli} (ang. \emp
 \label{rys:interchange}
 \end{figure}
 
-\section{Blokowanie i packing}
+\section{Blokowanie i pakowanie}
 \label{sec:blokowanie}
 
 Gdy zbiór roboczy obliczenia przekracza pojemność pamięci podręcznej, dane bywają wielokrotnie sprowadzane z wolniejszych poziomów, mimo że algorytm wykorzystuje je więcej niż raz. Rozwiązaniem jest \emph{blokowanie}, nazywane też \emph{kafelkowaniem} (ang. \emph{blocking}, \emph{tiling}): podział przestrzeni obliczeń na małe kafelki, które mieszczą się w pamięci podręcznej i są w całości przetwarzane, zanim procesor przejdzie do następnego (rysunek \ref{rys:tiling}) \src{drepper-mem}. Dzięki temu dane sprowadzone do pamięci podręcznej są wykorzystywane wielokrotnie, zanim zostaną z niej wyparte.
@@ -557,7 +557,7 @@ while (p != NULL) {
 
 Prefetch programowy stosuje się jednak z umiarem: sprowadzenie z wyprzedzeniem danych, które ostatecznie nie zostaną użyte, marnuje przepustowość pamięci i zapełnia pamięć podręczną niepotrzebnymi danymi. Dla regularnych, strumieniowych wzorców dostępu --- typowych dla rozważanych w pracy operacji --- prefetchery sprzętowe Zen 3 są wystarczające, a jawny prefetch programowy nie przynosi korzyści; polega się wówczas na prefetcherze sprzętowym \src{amd-sog}.
 
-\section{Wektoryzacja jako technika dostępu i przepustowości}
+\section{Wektoryzacja}
 \label{sec:wektoryzacja}
 
 Wektoryzacja polega na wykorzystaniu jednostek wektorowych i FMA (podrozdział \ref{sec:avx}) do przetwarzania wielu danych jedną instrukcją. W języku C realizuje się ją najczęściej za pomocą \emph{funkcji wbudowanych} (ang. \emph{intrinsics}) --- specjalnych funkcji odwzorowywanych bezpośrednio na instrukcje wektorowe procesora, dzięki którym programista jawnie steruje rejestrami oraz operacjami SIMD, nie sięgając po asembler \src{gepner-avx2}. Pojedynczy odczyt wektorowy sprowadza przy tym naraz kilka sąsiadujących w pamięci wartości, w pełni wykorzystując lokalność przestrzenną i całą linię pamięci podręcznej.
@@ -1064,7 +1064,7 @@ Trzecie podejście korzysta z \emph{twierdzenia o splocie} (ang. \emph{convoluti
 
 Opłacalność tej metody zależy jednak od rozmiaru jądra. Przewaga FFT ma charakter asymptotyczny i ujawnia się dla \emph{dużych} jąder, w których bezpośrednie sumowanie jest kosztowne; dla małych jąder --- w szczególności dla powszechnych w sieciach splotowych okien $3 \times 3$ --- narzut samych transformat oraz konieczność dopełnienia jądra do rozmiaru wejścia sprawiają, że metoda przestaje być korzystna i ustępuje podejściom bezpośrednim oraz algorytmom minimalnego filtrowania \src{lavin-gray-winograd}. Z tego powodu splotu przez FFT nie zaimplementowano w niniejszej pracy, w której rozważane jądra są małe; przedstawiono go tu jedynie jako kontekst, dopełniający przegląd metod obliczania splotu.
 
-\section{Szybki splot: algorytm Winograda}
+\section{Algorytm Winograda}
 \label{sec:splot-winograd}
 
 Czwarte podejście jest dla splotu tym, czym algorytm Strassena (podrozdział \ref{sec:blas-strassen}) dla mnożenia macierzy: zmniejsza liczbę mnożeń kosztem większej liczby tanich dodawań oraz gorszej dokładności numerycznej. Opiera się ono na \emph{algorytmach minimalnego filtrowania} (ang. \emph{minimal filtering algorithms}), których teorię podał Winograd, a do obliczania splotu w sieciach splotowych zastosowali Lavin i Gray \src{lavin-gray-winograd}\src{winograd-arithmetic}. Niniejszy podrozdział przedstawia ich ideę dla najczęściej stosowanego przypadku --- okna $3 \times 3$ --- oraz przyczyny, dla których, podobnie jak algorytm Strassena, pozostaje on techniką o ograniczonym zakresie stosowania.
@@ -1918,7 +1918,7 @@ W trybie sześciowątkowym warianty równoległe skalują się do około 250--26
 \label{rys:gemm-slupki}
 \end{figure}
 
-\section{Splot dwuwymiarowy}
+\section{Splot}
 \label{sec:wyniki-conv}
 
 Splot --- podobnie jak mnożenie dwóch macierzy --- ma wysoką intensywność operacyjną i jest operacją ograniczoną mocą obliczeniową (podrozdziały \ref{sec:splot-koszt} i \ref{sec:impl-conv}). Z tego względu, tak jak dla mnożenia macierzy, wyników nie analizuje się tu w odniesieniu do modelu roofline, lecz wzdłuż drabiny optymalizacji oraz względem pułapu szczytowego i wydajności bibliotek. Jedna różnica jest jednak istotna: splot zaimplementowano w pojedynczej precyzji (typ \texttt{float}), w której rejestr YMM mieści osiem wartości zamiast czterech, wobec czego szczytowa moc obliczeniowa jest dwukrotnie wyższa niż dla operacji podwójnej precyzji i wynosi około 141 GFLOPS (podrozdział \ref{sec:wyniki-wstep}). Inaczej niż poprzednie operacje, splot nie ma pojedynczej najlepszej implementacji --- najwłaściwsza metoda zależy od kształtu warstwy, dlatego wariantem docelowym jest dyspozytor wybierający metodę na podstawie kształtu zadania (podrozdział \ref{sec:impl-conv}). Implementacje zmierzono dla dwunastu presetów (tabela \ref{tab:conv-presety}); wyniki dla kształtów standardowych z jądrem $3 \times 3$ oraz splotu punktowego zebrano w tabeli \ref{tab:wyniki-conv-a}, a dla większych jąder i obrazów RGB --- w tabeli \ref{tab:wyniki-conv-b}.
@@ -1999,7 +1999,7 @@ W trybie sześciowątkowym szybkie jądra bezpośrednie skalują się bardzo dob
 \label{rys:conv-slupki}
 \end{figure}
 
-\section{Synteza wyników}
+\section{Podsumowanie wyników}
 \label{sec:wyniki-synteza}
 
 Zebrane pomiary potwierdzają tezę przewodnią pracy: techniki lokalności danych i wykorzystania pamięci podręcznej, omówione w rozdziałach \ref{chap:hierarchia} i \ref{chap:lokalnosc}, przekładają się bezpośrednio na wydajność, lecz osiągalny pułap oraz właściwa technika optymalizacji zależą od intensywności operacyjnej operacji. Podział na operacje ograniczone przepustowością pamięci oraz ograniczone mocą obliczeniową, wprowadzony w rozdziale \ref{chap:blas} i przyjęty jako oś niniejszego rozdziału, okazał się trafnym kryterium porządkującym wyniki.

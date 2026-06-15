@@ -27,7 +27,7 @@ sns.set_theme(style="whitegrid", font_scale=1.1)
 PALETTE = sns.color_palette("deep", 6)
 FIGWIDTH = 6.0
 
-VENDOR_PATTERNS = ("OpenBLAS", "AOCL-BLAS", "libxsmm")
+VENDOR_PATTERNS = ("OpenBLAS", "AOCL-BLAS")
 NAIVE_PATTERNS = ("Naive", "naive")
 
 
@@ -69,7 +69,6 @@ IMPL_LABELS = {
     "Zen3 dispatch OMP":     "Dyspozytor zależny od kształtu jądra",
     "im2col + OpenBLAS":     "im2col + OpenBLAS",
     "im2col + AOCL-BLAS":         "im2col + AOCL-BLAS",
-    "libxsmm":               "im2col + libxsmm",
 
     # klucze ogolne (krotkie, wspoldzielone przez kilka jader) -- na koncu
     "OMP":                   "Zrównoleglenie OpenMP",
@@ -378,6 +377,103 @@ def plot_kernel_all_implementations(kernel: str,
     fig.suptitle(f"Porównanie wszystkich implementacji — {kernel.upper()}",
                  fontsize=12, fontweight='bold', y=0.995)
     plt.tight_layout(rect=[0, 0, 1, 0.97])
+    fig.savefig(out_path, bbox_inches='tight')
+    plt.close()
+    print(f"Generated {out_path}")
+
+
+# ---------------------------------------------------------------------------
+# Przyspieszenie kolejnych implementacji wzgledem wersji naiwnej (1 watek).
+# Dla kazdego jadra jeden wykres: poziome slupki, jeden na implementacje
+# autorska, dlugosc = srednia geometryczna ilorazu mediana_impl/mediana_naiwna
+# po wszystkich presetach. Biblioteki vendorow pomijamy -- wykres ilustruje
+# "wage" kolejnych krokow optymalizacji wlasnego kodu.
+# ---------------------------------------------------------------------------
+
+def _geomean(values: list) -> float | None:
+    """Srednia geometryczna dodatnich wartosci (None, gdy brak danych)."""
+    vals = [v for v in values if v and v > 0.0]
+    if not vals:
+        return None
+    return float(np.exp(np.mean(np.log(vals))))
+
+
+def plot_speedup(kernel: str, presets: list, threads: int, out_path: Path):
+    """Przyspieszenie kolejnych implementacji autorskich wzgledem naiwnej.
+    Slupek = srednia geometryczna ilorazu mediana_impl/mediana_naiwna po
+    presetach. Implementacje w kolejnosci pojawiania sie w benchmarku (czyli
+    w kolejnosci rozwoju kodu); naiwna na gorze jako odniesienie (1,0x)."""
+    if not presets:
+        return
+
+    # Nazwy implementacji w kolejnosci pierwszego wystapienia (= kolejnosc
+    # rozwoju kodu w benchmark.c); naiwna trafia na poczatek naturalnie.
+    order = []
+    seen = set()
+    for p in presets:
+        for name in p.get("implementations", {}):
+            if name not in seen:
+                seen.add(name)
+                order.append(name)
+
+    # Dla kazdej implementacji: iloraz wzgledem naiwnej w tym samym presecie,
+    # usredniony geometrycznie po presetach.
+    entries = []
+    for name in order:
+        if is_vendor(name):
+            continue
+        ratios = []
+        for p in presets:
+            impls = p.get("implementations", {})
+            naive = next((v.get("median", 0.0) for n, v in impls.items()
+                          if is_naive(n)), 0.0)
+            cur = (impls.get(name) or {}).get("median", 0.0)
+            if naive and naive > 0 and cur and cur > 0:
+                ratios.append(cur / naive)
+        g = _geomean(ratios)
+        if g is None:
+            continue
+        label = "implementacja naiwna" if is_naive(name) else polish_label(name)
+        entries.append((label, g, is_naive(name)))
+
+    if len(entries) < 2:
+        return
+
+    n = len(entries)
+    fig_h = max(2.6, 0.46 * n + 1.2)
+    fig, ax = plt.subplots(figsize=(FIGWIDTH, fig_h))
+
+    y = np.arange(n)
+    speeds = [e[1] for e in entries]
+    # Naiwna w kolorze neutralnym (szary), pozostale w kolorze autorskim.
+    bar_colors = ["#9e9e9e" if e[2] else PALETTE[0] for e in entries]
+
+    ax.barh(y, speeds, 0.66, color=bar_colors,
+            edgecolor='black', linewidth=0.5)
+
+    ax.axvline(x=1.0, color="#555555", linewidth=0.8, linestyle=":", alpha=0.7)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels([e[0] for e in entries], fontsize=7.5)
+    ax.invert_yaxis()  # naiwna na gorze, kolejne kroki nizej
+    ax.set_xlabel("Przyspieszenie względem implementacji naiwnej [×]",
+                  fontsize=8.5)
+    title_thread = "1 wątek" if threads == 1 else f"{threads} {_thread_word(threads)}"
+    ax.set_title(f"{kernel.upper()} — przyspieszenie kolejnych implementacji "
+                 f"({title_thread})", fontsize=10)
+    ax.tick_params(axis='x', labelsize=7)
+    ax.grid(axis='x', linewidth=0.3, alpha=0.6)
+    ax.grid(axis='y', visible=False)
+
+    xmax = max(speeds) * 1.16
+    ax.set_xlim(0, xmax)
+
+    for yi, val in zip(y, speeds):
+        ax.annotate(f"{val:.1f}×", xy=(val, yi), xytext=(3, 0),
+                    textcoords='offset points', va='center',
+                    fontsize=7, fontweight='bold', color="#222222")
+
+    plt.tight_layout()
     fig.savefig(out_path, bbox_inches='tight')
     plt.close()
     print(f"Generated {out_path}")
@@ -755,6 +851,12 @@ def main():
     # poniewaz pulap szczytowy i przepustowosci sa wartosciami jednordzeniowymi.
     data_1t = by_threads.get(1)
     if data_1t:
+        # Przyspieszenie kolejnych implementacji wzgledem naiwnej (1 watek),
+        # po jednym wykresie na jadro (dot, gemv, gemm, conv).
+        for kernel, kernel_data in data_1t.get("kernels", {}).items():
+            plot_speedup(kernel, kernel_data.get("presets", []), 1,
+                         out_dir / f"speedup_{kernel}.pdf")
+
         for kernel in ROOFLINE_KERNELS:
             kernel_data = data_1t.get("kernels", {}).get(kernel)
             if not kernel_data:

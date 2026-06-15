@@ -1,6 +1,695 @@
-@misc{placeholder,
-  author = {Nazwisko, Imię},
-  title  = {PLACEHOLDER -- tu wstaw właściwą pozycję bibliograficzną},
-  year   = {2026},
-  note   = {Wpis tymczasowy do podmiany}
+@misc{drepper2007memory,
+  author       = {Ulrich Drepper},
+  title        = {What Every Programmer Should Know About Memory},
+  howpublished = {Red Hat, Inc.},
+  year         = {2007},
+  note         = {Wersja 1.0, 21 listopada 2007},
+  url          = {https://www.akkadia.org/drepper/cpumemory.pdf}
 }
+
+@misc{gottlieb_arch_lec22,
+  author       = {Allan Gottlieb},
+  title        = {Lecture Notes for Computer Systems Design (wyk{\l}ad 22)},
+  howpublished = {New York University, kurs Computer Architecture, sem. jesienny 2001/2002},
+  year         = {2001},
+  url          = {https://cs.nyu.edu/~gottlieb/courses/2000s/2001-02-fall/arch/lectures/lecture-22.html}
+}
+
+@article{williams2009roofline,
+  author = {Williams, Samuel and Waterman, Andrew and Patterson, David},
+  title = {Roofline: an insightful visual performance model for multicore architectures},
+  year = {2009},
+  issue_date = {April 2009},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {52},
+  number = {4},
+  issn = {0001-0782},
+  url = {https://doi.org/10.1145/1498765.1498785},
+  doi = {10.1145/1498765.1498785},
+  abstract = {The Roofline model offers insight on how to improve the performance of software and hardware.},
+  journal = {Commun. ACM},
+  month = apr,
+  pages = {65–76},
+  numpages = {12}
+}
+
+@article{evers2022zen3,
+  author={Evers, Mark and Barnes, Leslie and Clark, Mike},
+  journal={IEEE Micro},
+  title={The AMD Next-Generation “Zen 3” Core},
+  year={2022},
+  volume={42},
+  number={3},
+  pages={7-12},
+  keywords={Central processing units;Servers;Virtual machine monitors;Prefetching;Microarchitecture;Bandwidth;Organizations},
+  doi={10.1109/MM.2022.3152788}
+}
+
+@article{goto2008anatomy,
+  author = {Goto, Kazushige and Geijn, Robert A. van de},
+  title = {Anatomy of high-performance matrix multiplication},
+  year = {2008},
+  issue_date = {May 2008},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {34},
+  number = {3},
+  issn = {0098-3500},
+  url = {https://doi.org/10.1145/1356052.1356053},
+  doi = {10.1145/1356052.1356053},
+  abstract = {We present the basic principles that underlie the high-performance implementation of the matrix-matrix multiplication that is part of the widely used GotoBLAS library. Design decisions are justified by successively refining a model of architectures with multilevel memories. A simple but effective algorithm for executing this operation results. Implementations on a broad selection of architectures are shown to achieve near-peak performance.},
+  journal = {ACM Trans. Math. Softw.},
+  month = may,
+  articleno = {12},
+  numpages = {25},
+  keywords = {matrix multiplication, basic linear algebra subprogrms, Linear algebra}
+}
+
+@article{wulf1995memorywall,
+  author = {Wulf, Wm. A. and McKee, Sally A.},
+  title = {Hitting the memory wall: implications of the obvious},
+  year = {1995},
+  issue_date = {March 1995},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {23},
+  number = {1},
+  issn = {0163-5964},
+  url = {https://doi.org/10.1145/216585.216588},
+  doi = {10.1145/216585.216588},
+  journal = {SIGARCH Comput. Archit. News},
+  month = mar,
+  pages = {20–24},
+  numpages = {5}
+}
+
+@book{hennessy2017architecture,
+  author    = {John L. Hennessy and David A. Patterson},
+  title     = {Computer Architecture: A Quantitative Approach},
+  edition   = {6th},
+  publisher = {Morgan Kaufmann Publishers Inc.},
+  year      = {2017},
+  isbn      = {978-0-12-811905-1}
+}
+
+@misc{fog_microarchitecture,
+  author       = {Agner Fog},
+  title        = {The microarchitecture of {Intel}, {AMD} and {VIA} {CPUs}: An optimization guide for assembly programmers and compiler makers},
+  howpublished = {Technical University of Denmark},
+  note         = {ostatnia aktualizacja 2026-05-23; data dostępu 2026-06-14},
+  url          = {https://www.agner.org/optimize/microarchitecture.pdf}
+}
+
+@manual{amd64_apm_vol1,
+  title        = {AMD64 Architecture Programmer's Manual, Volume 1: Application Programming},
+  organization = {Advanced Micro Devices},
+  number       = {24592},
+  year         = {2025},
+  note         = {Rev. 3.24, sierpień 2025; data dostępu 2026-06-14},
+  url          = {https://docs.amd.com/v/u/en-US/24592_3.24}
+}
+
+@article{gepner2017avx2,
+  author = {Gepner, Pawel},
+  year = {2017},
+  month = {01},
+  pages = {1001-1018},
+  title = {Using AVX2 Instruction Set to Increase Performance of High Performance Computing Code},
+  volume = {36},
+  journal = {Computing and Informatics},
+  doi = {10.4149/cai_2017_5_1001}
+}
+
+@article{zhang2019fma,
+  author={Zhang, Hao and Chen, Dongdong and Ko, Seok-Bum},
+  journal={IEEE Transactions on Computers},
+  title={Efficient Multiple-Precision Floating-Point Fused Multiply-Add with Mixed-Precision Support},
+  year={2019},
+  volume={68},
+  number={7},
+  pages={1035-1048},
+  keywords={Computer architecture;Adders;Hardware;Pipelines;Standards;Deep learning;Clocks;Fused multiply-add;floating-point arithmetics;multiple-precision arithmetics;mixed-precision arithmetics},
+  doi={10.1109/TC.2019.2895031}
+}
+
+@article{flynn1972taxonomy,
+  author={Flynn, Michael J.},
+  journal={IEEE Transactions on Computers},
+  title={Some Computer Organizations and Their Effectiveness},
+  year={1972},
+  volume={C-21},
+  number={9},
+  pages={948-960},
+  keywords={Organizations;Computers;Entropy;Computational modeling;Data mining;Probability density function;Bandwidth;Computer organization;instruction stream;overlapped;parallel processors;resource hierarchy},
+  doi={10.1109/TC.1972.5009071}
+}
+
+@manual{amd_sog_19h,
+  title        = {Software Optimization Guide for AMD Family 19h Processors},
+  author       = {{Advanced Micro Devices, Inc.}},
+  organization = {Advanced Micro Devices, Inc.},
+  year         = {2020},
+  number       = {56665},
+  note         = {Revision 3.00; data dostępu 2026-06-14},
+  url          = {https://kib.kiev.ua/x86docs/AMD/Optimization/56665_3.00_Software%20Optimization%20Guide%20for%20AMD%20Family%2019h%20Processors%20%28PUB%29.pdf}
+}
+
+@manual{openmp52,
+  title        = {OpenMP Application Programming Interface, Version 5.2},
+  organization = {OpenMP Architecture Review Board},
+  year         = {2021},
+  url          = {https://www.openmp.org/wp-content/uploads/OpenMP-API-Specification-5-2.pdf}
+}
+
+@article{frigo1999cacheoblivious,
+  author = {Frigo, Matteo and Leiserson, Charles E. and Prokop, Harald and Ramachandran, Sridhar},
+  title = {Cache-Oblivious Algorithms},
+  year = {2012},
+  issue_date = {January 2012},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {8},
+  number = {1},
+  issn = {1549-6325},
+  url = {https://doi.org/10.1145/2071379.2071383},
+  doi = {10.1145/2071379.2071383},
+  abstract = {This article presents asymptotically optimal algorithms for rectangular matrix transpose, fast Fourier transform (FFT), and sorting on computers with multiple levels of caching. Unlike previous optimal algorithms, these algorithms are cache oblivious: no variables dependent on hardware parameters, such as cache size and cache-line length, need to be tuned to achieve optimality. Nevertheless, these algorithms use an optimal amount of work and move data optimally among multiple levels of cache. For a cache with size M and cache-line length B where M = Ω(B2), the number of cache misses for an m \texttimes{} n matrix transpose is Θ(1 + mn/B). The number of cache misses for either an n-point FFT or the sorting of n numbers is Θ(1 + (n/B)(1 + logM n)). We also give a Θ(mnp)-work algorithm to multiply an m \texttimes{} n matrix by an n \texttimes{} p matrix that incurs Θ(1 + (mn + np + mp)/B + mnp/B√M) cache faults.We introduce an “ideal-cache” model to analyze our algorithms. We prove that an optimal cache-oblivious algorithm designed for two levels of memory is also optimal for multiple levels and that the assumption of optimal replacement in the ideal-cache model can be simulated efficiently by LRU replacement. We offer empirical evidence that cache-oblivious algorithms perform well in practice.},
+  journal = {ACM Trans. Algorithms},
+  month = jan,
+  articleno = {4},
+  numpages = {22},
+  keywords = {Algorithm, I/O complexity, cache-oblivious, caching, fast Fourier transform, matrix multiplication, matrix transpose, sorting}
+}
+
+@misc{smith_bandwidth,
+  author       = {Zack T. Smith},
+  title        = {bandwidth: a memory bandwidth benchmark},
+  url          = {https://zs3.me/bandwidth},
+  note         = {dostęp: 7 czerwca 2026}
+}
+
+@misc{finlaydag33k_ramcalc,
+  author       = {{FinlayDaG33k}},
+  title        = {{RAM} Bandwidth Calculator},
+  url          = {https://edu.finlaydag33k.nl/calculating%20ram%20bandwidth/},
+  note         = {repozytorium: \url{https://gitlab.com/FinlayDaG33k/ram-calculator}; narz\k{e}dzie internetowe; dost\k{e}p: 8 czerwca 2026}
+}
+
+@book{bryant2015csapp,
+  author    = {Randal E. Bryant and David R. O'Hallaron},
+  title     = {Computer Systems: A Programmer's Perspective},
+  edition   = {3},
+  publisher = {Pearson},
+  year      = {2015},
+  isbn      = {978-0-13-409266-9}
+}
+
+@article{smith1982cache,
+  author = {Smith, Alan Jay},
+  title = {Cache Memories},
+  year = {1982},
+  issue_date = {Sept. 1982},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {14},
+  number = {3},
+  issn = {0360-0300},
+  url = {https://doi.org/10.1145/356887.356892},
+  doi = {10.1145/356887.356892},
+  journal = {ACM Comput. Surv.},
+  month = sep,
+  pages = {473–530},
+  numpages = {58}
+}
+
+@article{hill1989associativity,
+  author={Hill, M.D. and Smith, A.J.},
+  journal={IEEE Transactions on Computers},
+  title={Evaluating associativity in CPU caches},
+  year={1989},
+  volume={38},
+  number={12},
+  pages={1612-1630},
+  keywords={Cache memory;Computer science;Memory architecture;Computerized monitoring;Contracts;Laboratories;Cost function},
+  doi={10.1109/12.40842}
+}
+
+@inproceedings{mowry1992prefetch,
+  author = {Mowry, Todd C. and Lam, Monica S. and Gupta, Anoop},
+  title = {Design and evaluation of a compiler algorithm for prefetching},
+  year = {1992},
+  isbn = {0897915348},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/143365.143488},
+  doi = {10.1145/143365.143488},
+  booktitle = {Proceedings of the Fifth International Conference on Architectural Support for Programming Languages and Operating Systems},
+  pages = {62–73},
+  numpages = {12},
+  location = {Boston, Massachusetts, USA},
+  series = {ASPLOS V}
+}
+
+@article{lawson1979blas,
+  author = {Lawson, C. L. and Hanson, R. J. and Kincaid, D. R. and Krogh, F. T.},
+  title = {Basic Linear Algebra Subprograms for Fortran Usage},
+  year = {1979},
+  issue_date = {Sept. 1979},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {5},
+  number = {3},
+  issn = {0098-3500},
+  url = {https://doi.org/10.1145/355841.355847},
+  doi = {10.1145/355841.355847},
+  journal = {ACM Trans. Math. Softw.},
+  month = sep,
+  pages = {308–323},
+  numpages = {16}
+}
+
+@manual{intel_optimization,
+  title        = {Intel 64 and IA-32 Architectures Optimization Reference Manual},
+  organization = {Intel Corporation},
+  number       = {821612},
+  year         = {2024},
+  note         = {wersja z 2024-04-24; data dostępu 2026-06-14},
+  url          = {https://www.intel.com/content/www/us/en/content-details/821612/intel-64-and-ia-32-architectures-optimization-reference-manual-volume-1.html}
+}
+
+@article{dongarra1988blas2,
+  author = {Dongarra, Jack J. and Du Croz, Jeremy and Hammarling, Sven and Hanson, Richard J.},
+  title = {An extended set of FORTRAN basic linear algebra subprograms},
+  year = {1988},
+  issue_date = {March 1988},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {14},
+  number = {1},
+  issn = {0098-3500},
+  url = {https://doi.org/10.1145/42288.42291},
+  doi = {10.1145/42288.42291},
+  abstract = {This paper describes an extension to the set of Basic Linear Algebra Subprograms. The extensions are targeted at matrix-vector operations that should provide for efficient and portable implementations of algorithms for high-performance computers.},
+  journal = {ACM Trans. Math. Softw.},
+  month = mar,
+  pages = {1–17},
+  numpages = {17}
+}
+
+@article{dongarra1990blas3,
+  author = {Dongarra, J. J. and Du Croz, Jeremy and Hammarling, Sven and Duff, I. S.},
+  title = {A set of level 3 basic linear algebra subprograms},
+  year = {1990},
+  issue_date = {March 1990},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {16},
+  number = {1},
+  issn = {0098-3500},
+  url = {https://doi.org/10.1145/77626.79170},
+  doi = {10.1145/77626.79170},
+  abstract = {This paper describes an extension to the set of Basic Linear Algebra Subprograms. The extensions are targeted at matrix-vector operations that should provide for efficient and portable implementations of algorithms for high-performance computers},
+  journal = {ACM Trans. Math. Softw.},
+  month = mar,
+  pages = {1–17},
+  numpages = {17}
+}
+
+@article{blackford2002blas,
+  author = {L. Susan Blackford and James Demmel and Jack Dongarra and Iain Duff and Sven Hammarling and Greg Henry and Michael Heroux and Linda Kaufman and Andrew Lumsdaine and Antoine Petitet and Roldan Pozo and Karin Remington and R. Clint Whaley},
+  title = {An updated set of basic linear algebra subprograms (BLAS)},
+  year = {2002},
+  issue_date = {June 2002},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {28},
+  number = {2},
+  issn = {0098-3500},
+  url = {https://doi.org/10.1145/567806.567807},
+  doi = {10.1145/567806.567807},
+  journal = {ACM Trans. Math. Softw.},
+  month = jun,
+  pages = {135–151},
+  numpages = {17},
+  keywords = {BLAS, linear algebra, standards}
+}
+
+@misc{netlib_blas,
+  author       = {Netlib},
+  title        = {BLAS (Basic Linear Algebra Subprograms)},
+  howpublished = {strona projektu Netlib},
+  note         = {dostęp: 6 czerwca 2026},
+  url          = {https://www.netlib.org/blas/}
+}
+
+% hong-kung-io
+@inproceedings{hong1981redblue,
+  author = {Jia-Wei, Hong and Kung, H. T.},
+  title = {I/O complexity: The red-blue pebble game},
+  year = {1981},
+  isbn = {9781450373920},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/800076.802486},
+  doi = {10.1145/800076.802486},
+  abstract = {In this paper, the red-blue pebble game is proposed to model the input-output complexity of algorithms. Using the pebble game formulation, a number of lower bound results for the I/O requirement are proven. For example, it is shown that to perform the n-point FFT or the ordinary n\texttimes{}n matrix multiplication algorithm with O(S) memory, at least Ω(n log n/log S) or Ω(n3/@@@@S), respectively, time is needed for the I/O. Similar results are obtained for algorithms for several other problems. All of the lower bounds presented are the best possible in the sense that they are achievable by certain decomposition schemes.Results of this paper may provide insight into the difficult task of balancing I/O and computation in special-purpose system designs. For example, for the n-point FFT, the lower bound on I/O time implies that an S-point device achieving a speed-up ratio of order log S over the conventional O(n log n) time implementation is all one can hope for.},
+  booktitle = {Proceedings of the Thirteenth Annual ACM Symposium on Theory of Computing},
+  pages = {326–333},
+  numpages = {8},
+  location = {Milwaukee, Wisconsin, USA},
+  series = {STOC '81}
+}
+
+@article{vanzee2015blis,
+  author = {Van Zee, Field G. and van de Geijn, Robert A.},
+  title = {BLIS: A Framework for Rapidly Instantiating BLAS Functionality},
+  year = {2015},
+  issue_date = {June 2015},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {41},
+  number = {3},
+  issn = {0098-3500},
+  url = {https://doi.org/10.1145/2764454},
+  doi = {10.1145/2764454},
+  abstract = {The BLAS-like Library Instantiation Software (BLIS) framework is a new infrastructure for rapidly instantiating Basic Linear Algebra Subprograms (BLAS) functionality. Its fundamental innovation is that virtually all computation within level-2 (matrix-vector) and level-3 (matrix-matrix) BLAS operations can be expressed and optimized in terms of very simple kernels. While others have had similar insights, BLIS reduces the necessary kernels to what we believe is the simplest set that still supports the high performance that the computational science community demands. Higher-level framework code is generalized and implemented in ISO C99 so that it can be reused and/or reparameterized for different operations (and different architectures) with little to no modification. Inserting high-performance kernels into the framework facilitates the immediate optimization of any BLAS-like operations which are cast in terms of these kernels, and thus the framework acts as a productivity multiplier. Users of BLAS-dependent applications are given a choice of using the traditional Fortran-77 BLAS interface, a generalized C interface, or any other higher level interface that builds upon this latter API. Preliminary performance of level-2 and level-3 operations is observed to be competitive with two mature open source libraries (OpenBLAS and ATLAS) as well as an established commercial product (Intel MKL).},
+  journal = {ACM Trans. Math. Softw.},
+  month = jun,
+  articleno = {14},
+  numpages = {33},
+  keywords = {BLAS, Linear algebra, high-performance, libraries, matrix}
+}
+
+@inproceedings{zhang2012openblas,
+  author={Xianyi, Zhang and Qian, Wang and Yunquan, Zhang},
+  booktitle={2012 IEEE 18th International Conference on Parallel and Distributed Systems},
+  title={Model-driven Level 3 BLAS Performance Optimization on Loongson 3A Processor},
+  year={2012},
+  volume={},
+  number={},
+  pages={684-691},
+  keywords={Registers;Prefetching;Kernel;Optimization;Pipelines;BLAS;Loongson 3A;MIPS64;Optimization;Multi-core},
+  doi={10.1109/ICPADS.2012.97}
+}
+
+@misc{amd_aocl_blas,
+  author       = {{Advanced Micro Devices}},
+  title        = {{AOCL-BLAS}: Basic Linear Algebra Subprograms Library},
+  howpublished = {AMD Optimizing CPU Libraries (AOCL); repozytorium \url{https://github.com/amd/blis}},
+  note         = {dostęp: 7 czerwca 2026},
+  url          = {https://www.amd.com/en/developer/aocl/blis.html}
+}
+
+@article{whaley2001atlas,
+  title = {Automated empirical optimizations of software and the ATLAS project},
+  journal = {Parallel Computing},
+  volume = {27},
+  number = {1},
+  pages = {3-35},
+  year = {2001},
+  note = {New Trends in High Performance Computing},
+  issn = {0167-8191},
+  doi = {https://doi.org/10.1016/S0167-8191(00)00087-9},
+  url = {https://www.sciencedirect.com/science/article/pii/S0167819100000879},
+  author = {R. {Clint Whaley} and Antoine Petitet and Jack J. Dongarra},
+  keywords = {ATLAS, BLAS, Portable performance, AEOS},
+  abstract = {This paper describes the automatically tuned linear algebra software (ATLAS) project, as well as the fundamental principles that underly it. ATLAS is an instantiation of a new paradigm in high performance library production and maintenance, which we term automated empirical optimization of software (AEOS); this style of library management has been created in order to allow software to keep pace with the incredible rate of hardware advancement inherent in Moore's Law. ATLAS is the application of this new paradigm to linear algebra software, with the present emphasis on the basic linear algebra subprograms (BLAS), a widely used, performance-critical, linear algebra kernel library.}
+}
+
+@manual{nvidia_cublas,
+  title        = {cuBLAS Library Documentation},
+  organization = {NVIDIA Corporation},
+  note         = {część CUDA Toolkit; dostęp: 7 czerwca 2026},
+  url          = {https://docs.nvidia.com/cuda/cublas/}
+}
+
+@misc{intel_onemkl,
+  author       = {Intel Corporation},
+  title        = {oneAPI Math Kernel Library (oneMKL)},
+  howpublished = {dokumentacja produktu Intel},
+  note         = {dawniej Intel Math Kernel Library; dostęp: 7 czerwca 2026},
+  url          = {https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html}
+}
+
+@book{golub2013matrix,
+  author = {Golub, Gene H. and van Loan, Charles F.},
+  edition = {Fourth},
+  isbn = {1421407949 9781421407944},
+  keywords = {GvL cauchy circulant courant-fischer determinant dft eigenvalues interlacing linear.algebra matrix pseudoinverse textbook},
+  publisher = {JHU Press},
+  refid = {824733531},
+  timestamp = {2017-08-18T08:02:54.000+0200},
+  title = {Matrix Computations},
+  year = 2013
+}
+
+@article{kagstrom1998gemm,
+  author = {K\r{a}gstr\"{o}m, Bo and Ling, Per and van Loan, Charles},
+  title = {GEMM-based level 3 BLAS: high-performance model implementations and performance evaluation benchmark},
+  year = {1998},
+  issue_date = {Sept. 1998},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {24},
+  number = {3},
+  issn = {0098-3500},
+  url = {https://doi.org/10.1145/292395.292412},
+  doi = {10.1145/292395.292412},
+  abstract = {The level 3 Basic Linear Algebra Subprograms (BLAS) are designed to perform various matrix multiply and triangular system solving computations. Due to the complex hardware organization of advanced computer architectures the development of optimal level 3 BLAS code is costly and time consuming. However, it is possible to develop a portable and high-performance level 3 BLAS library mainly relying on a highly optimized GEMM, the routine for the general matrix multiply and add operation. With suitable partitioning, all the other level 3 BLAS can be defined in terms of GEMM and a small amount of level 1 and level 2 computations. Our contribution is twofold. First, the model implementations in Fortran 77 of the GEMM-based level 3 BLAS are structured to reduced effectively data traffic in a memory hierarchy. Second, the GEMM-based level 3 BLAS performance evaluation benchmark is a tool for evaluating and comparing different implementations of the level 3 BLAS with the GEMM-based model implementations.},
+  journal = {ACM Trans. Math. Softw.},
+  month = sep,
+  pages = {268–302},
+  numpages = {35},
+  keywords = {vectorization, parallelization, memory hierarchy, matrix-matrix kernels, blocked algorithms, GEMM-based level 3 BLAS}
+}
+
+@article{strassen1969gaussian,
+  author  = {Volker Strassen},
+  title   = {Gaussian elimination is not optimal},
+  journal = {Numerische Mathematik},
+  volume  = {13},
+  pages   = {354--356},
+  year    = {1969},
+  doi     = {10.1007/BF02165411}
+}
+
+@inproceedings{coppersmith1990matrix,
+  author = {Coppersmith, D. and Winograd, S.},
+  title = {Matrix multiplication via arithmetic progressions},
+  year = {1987},
+  isbn = {0897912217},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/28395.28396},
+  doi = {10.1145/28395.28396},
+  abstract = {We present a new method for accelerating matrix multiplication asymptotically. This work builds on recent ideas of Volker Strassen, by using a basic trilinear form which is not a matrix product. We make novel use of the Salem-Spencer Theorem, which gives a fairly dense set of integers with no three-term arithmetic progression. Our resulting matrix exponent is 2.376.},
+  booktitle = {Proceedings of the Nineteenth Annual ACM Symposium on Theory of Computing},
+  pages = {1–6},
+  numpages = {6},
+  location = {New York, New York, USA},
+  series = {STOC '87}
+}
+
+@article{higham1990exploiting,
+  author = {Higham, Nicholas J.},
+  title = {Exploiting fast matrix multiplication within the level 3 BLAS},
+  year = {1990},
+  issue_date = {Dec. 1990},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {16},
+  number = {4},
+  issn = {0098-3500},
+  url = {https://doi.org/10.1145/98267.98290},
+  doi = {10.1145/98267.98290},
+  abstract = {The Level 3 BLAS (BLAS3) are a set of specifications of FORTRAN 77 subprograms for carrying out matrix multiplications and the solution of triangular systems with multiple right-hand sides. They are intended to provide efficient and portable building blocks for linear algebra algorithms on high-performance computers. We describe algorithms for the BLAS3 operations that are asymptotically faster than the conventional ones. These algorithms are based on Strassen's method for fast matrix multiplication, which is now recognized to be a practically useful technique once matrix dimensions exceed about 100. We pay particular attention to the numerical stability of these “fast BLAS3.” Error bounds are given and their significance is explained and illustrated with the aid of  numerical experiments. Our conclusion is that the fast BLAS3, although not as strongly stable as conventional implementations, are stable enough to merit careful consideration in many applications.},
+  journal = {ACM Trans. Math. Softw.},
+  month = dec,
+  pages = {352–368},
+  numpages = {17}
+}
+
+@inproceedings{alman2021refined,
+  author = {Alman, Josh and Williams, Virginia Vassilevska},
+  title = {A refined laser method and faster matrix multiplication},
+  year = {2021},
+  isbn = {9781611976465},
+  publisher = {Society for Industrial and Applied Mathematics},
+  address = {USA},
+  abstract = {The complexity of matrix multiplication is measured in terms of ω, the smallest real number such that two n \texttimes{} n matrices can be multiplied using O(nω+ϵ) field operations for all ϵ > 0; the best bound until now is ω < 2.37287 [Le Gall'14]. All bounds on ω since 1986 have been obtained using the so-called laser method, a way to lower-bound the 'value' of a tensor in designing matrix multiplication algorithms. The main result of this paper is a refinement of the laser method that improves the resulting value bound for most sufficiently large tensors. Thus, even before computing any specific values, it is clear that we achieve an improved bound on ω, and we indeed obtain the best bound on ω to date:ω < 2.37286.The improvement is of the same magnitude as the improvement that [Le Gall'14] obtained over the previous bound [Vassilevska W.'12]. Our improvement to the laser method is quite general, and we believe it will have further applications in arithmetic complexity.},
+  booktitle = {Proceedings of the Thirty-Second Annual ACM-SIAM Symposium on Discrete Algorithms},
+  pages = {522–539},
+  numpages = {18},
+  location = {Virtual Event, Virginia},
+  series = {SODA '21}
+}
+
+@book{goodfellow2016deeplearning,
+  author = {Goodfellow, Ian and Bengio, Yoshua and Courville, Aaron},
+  description = {Deep Learning - Ian Goodfellow, Yoshua Bengio, Aaron Courville - Google Books;
+Complete MIT book available online in chapters. Book has been recommended to me by several people. I therefore recommend it to you.},
+  keywords = {CNN DNN DeepLearning RNN},
+  note = {\url{http://www.deeplearningbook.org}},
+  publisher = {MIT Press},
+  title = {Deep Learning},
+  year = 2016
+}
+
+@book{oppenheim2010dtsp,
+  author    = {Alan V. Oppenheim and Ronald W. Schafer},
+  title     = {Discrete-Time Signal Processing},
+  publisher = {Pearson},
+  address   = {Upper Saddle River, NJ},
+  year      = {2009},
+  isbn      = {978-0-13-198842-2}
+}
+
+@inproceedings{vasudevan2017mcmk,
+  author       = {Aravind Vasudevan and
+                  Andrew Anderson and
+                  David Gregg},
+  title        = {Parallel Multi Channel Convolution using General Matrix Multiplication},
+  journal      = {CoRR},
+  volume       = {abs/1704.04428},
+  year         = {2017},
+  url          = {http://arxiv.org/abs/1704.04428},
+  eprinttype   = {arXiv},
+  eprint       = {1704.04428},
+  timestamp    = {Wed, 15 Aug 2018 16:06:57 +0200},
+}
+
+@inproceedings{georganas2018conv,
+  author = {Georganas, Evangelos and Avancha, Sasikanth and Banerjee, Kunal and Kalamkar, Dhiraj and Henry, Greg and Pabst, Hans and Heinecke, Alexander},
+  title = {Anatomy of high-performance deep learning convolutions on SIMD architectures},
+  year = {2018},
+  publisher = {IEEE Press},
+  abstract = {Convolution layers are prevalent in many classes of deep neural networks, including Convolutional Neural Networks (CNNs) which provide state-of-the-art results for tasks like image recognition, neural machine translation and speech recognition. The computationally expensive nature of a convolution operation has led to the proliferation of implementations including matrix-matrix multiplication formulation, and direct convolution primarily targeting GPUs. In this paper, we introduce direct convolution kernels for x86 architectures, in particular for Xeon and Xeon Phi systems, which are implemented via a dynamic compilation approach. Our JIT-based implementation shows close to theoretical peak performance, depending on the setting and the CPU architecture at hand. We additionally demonstrate how these JIT-optimized kernels can be integrated into a light-weight multi-node graph execution model. This illustrates that single- and multi-node runs yield high efficiencies and high image-throughputs when executing state-of-the-art image recognition tasks on CPUs.},
+  booktitle = {Proceedings of the International Conference for High Performance Computing, Networking, Storage, and Analysis},
+  articleno = {66},
+  numpages = {12},
+  location = {Dallas, Texas},
+  series = {SC '18}
+}
+
+@misc{onednn_memory_formats,
+  author       = {{oneDNN}},
+  title        = {Understanding Memory Formats},
+  howpublished = {dokumentacja oneDNN (oneAPI Deep Neural Network Library)},
+  note         = {v3.13 dostęp: 7 czerwca 2026},
+  url          = {https://uxlfoundation.github.io/oneDNN/dev_guide_understanding_memory_formats.html}
+}
+
+@inproceedings{chellapilla2006highperf,
+  TITLE = {{High Performance Convolutional Neural Networks for Document Processing}},
+  AUTHOR = {Chellapilla, Kumar and Puri, Sidd and Simard, Patrice},
+  URL = {https://inria.hal.science/inria-00112631},
+  NOTE = {http://www.suvisoft.com},
+  BOOKTITLE = {{Tenth International Workshop on Frontiers in Handwriting Recognition}},
+  ADDRESS = {La Baule (France)},
+  ORGANIZATION = {{Universit{\'e} de Rennes 1}},
+  EDITOR = {Guy Lorette},
+  PUBLISHER = {{Suvisoft}},
+  YEAR = {2006},
+  MONTH = Oct,
+  KEYWORDS = {Convolutional neural networks ; BLAS ; GPU},
+  PDF = {https://inria.hal.science/inria-00112631v1/file/p1038112283956.pdf},
+  HAL_ID = {inria-00112631},
+  HAL_VERSION = {v1},
+}
+
+@inproceedings{lavin2016fast,
+  author={Lavin, Andrew and Gray, Scott},
+  booktitle={2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  title={Fast Algorithms for Convolutional Neural Networks},
+  year={2016},
+  volume={},
+  number={},
+  pages={4013-4021},
+  keywords={Convolution;Complexity theory;Transforms;Neural networks;Laplace equations;Two dimensional displays;Image recognition},
+  doi={10.1109/CVPR.2016.435}
+}
+
+@book{winograd1980arithmetic,
+  author = {Winograd, Shmuel},
+  title = {Arithmetic Complexity of Computations},
+  publisher = {Society for Industrial and Applied Mathematics},
+  year = {1980},
+  doi = {10.1137/1.9781611970364},
+  address = {},
+  edition   = {},
+  URL = {https://epubs.siam.org/doi/abs/10.1137/1.9781611970364},
+  eprint = {https://epubs.siam.org/doi/pdf/10.1137/1.9781611970364}
+}
+
+@misc{ieee754_2008,
+  author={IEEE},
+  journal={IEEE Std 754-2019 (Revision of IEEE 754-2008)},
+  title={IEEE Standard for Floating-Point Arithmetic},
+  year={2019},
+  volume={},
+  number={},
+  pages={1-84},
+  keywords={IEEE Standards;Floating-point arithmetic;arithmetic;binary;computer;decimal;exponent;floating-point;format;IEEE 754;interchange;NaN;number;rounding;significand;subnormal.},
+  doi={10.1109/IEEESTD.2019.8766229}
+}
+
+@article{lee2012prefetching,
+  author = {Lee, Jaekyu and Kim, Hyesoon and Vuduc, Richard},
+  title = {When Prefetching Works, When It Doesn’t, and Why},
+  year = {2012},
+  issue_date = {March 2012},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {9},
+  number = {1},
+  issn = {1544-3566},
+  url = {https://doi.org/10.1145/2133382.2133384},
+  doi = {10.1145/2133382.2133384},
+  abstract = {In emerging and future high-end processor systems, tolerating increasing cache miss latency and properly managing memory bandwidth will be critical to achieving high performance. Prefetching, in both hardware and software, is among our most important available techniques for doing so; yet, we claim that prefetching is perhaps also the least well-understood.Thus, the goal of this study is to develop a novel, foundational understanding of both the benefits and limitations of hardware and software prefetching. Our study includes: source code-level analysis, to help in understanding the practical strengths and weaknesses of compiler- and software-based prefetching; a study of the synergistic and antagonistic effects between software and hardware prefetching; and an evaluation of hardware prefetching training policies in the presence of software prefetching requests. We use both simulation and measurement on real systems. We find, for instance, that although there are many opportunities for compilers to prefetch much more aggressively than they currently do, there is also a tangible risk of interference with training existing hardware prefetching mechanisms. Taken together, our observations suggest new research directions for cooperative hardware/software prefetching.},
+  journal = {ACM Trans. Archit. Code Optim.},
+  month = mar,
+  articleno = {2},
+  numpages = {29},
+  keywords = {cache, Prefetching}
+}
+
+@misc{intel_sdlt,
+  author       = {Intel Corporation},
+  title        = {Optimize Data Layout with SIMD Templates},
+  howpublished = {Intel Developer Zone},
+  url          = {https://www.intel.com/content/www/us/en/developer/articles/technical/data-layout-optimization-using-simd-data-layout-templates.html}
+}
+
+@inproceedings{williams2024omega,
+  title={New Bounds for Matrix Multiplication: from Alpha to Omega}, 
+  author={Virginia Vassilevska Williams and Yinzhan Xu and Zixuan Xu and Renfei Zhou},
+  year={2023},
+  eprint={2307.07970},
+  archivePrefix={arXiv},
+  primaryClass={cs.DS},
+  url={https://arxiv.org/abs/2307.07970}, 
+}
+
+@inbook{alman2025omega,
+  author = {Josh Alman and Ran Duan and Virginia Vassilevska Williams and Yinzhan Xu and Zixuan Xu and Renfei Zhou},
+  title = {More Asymmetry Yields Faster Matrix Multiplication},
+  booktitle = {Proceedings of the 2025 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)},
+  chapter = {},
+  pages = {2005-2039},
+  doi = {10.1137/1.9781611978322.63},
+  URL = {https://epubs.siam.org/doi/abs/10.1137/1.9781611978322.63},
+  eprint = {https://epubs.siam.org/doi/pdf/10.1137/1.9781611978322.63},
+  abstract = { Abstract We present a new improvement on the laser method for designing fast matrix multiplication algorithms. The new method further develops the recent advances by [Duan, Wu, Zhou FOCS 2023] and [Vassilevska Williams, Xu, Xu, Zhou SODA 2024]. Surprisingly the new improvement is achieved by incorporating more asymmetry in the analysis, circumventing a fundamental tool of prior work that requires two of the three dimensions to be treated identically. The method yields a new bound on the square matrix multiplication exponent ω < 2.371339, improved from the previous bound of ω < 2.371552. We also improve the bounds of the exponents for multiplying rectangular matrices of various shapes. }
+}
+
+@misc{mathieu2014fft,
+      title={Fast Training of Convolutional Networks through FFTs}, 
+      author={Michael Mathieu and Mikael Henaff and Yann LeCun},
+      year={2014},
+      eprint={1312.5851},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/1312.5851}, 
+}
+

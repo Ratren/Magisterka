@@ -222,6 +222,34 @@ static void run_preset(const char* name, int rows, int cols, int iterations,
     if (out) snapshot(out, name, rows, cols, impls);
 }
 
+static int run_measure(const char* name, int rows, int cols, int iterations, Impl* impls) {
+    if (rows <= 0 || cols <= 0 || iterations <= 0) {
+        fprintf(stderr, "run_measure: wymagane --custom <iter> <rows> <cols>\n");
+        return 1;
+    }
+    int idx = -1;
+    for (int i = 0; i < NUM_IMPLEMENTATIONS; i++)
+        if (strcmp(impls[i].name, name) == 0) { idx = i; break; }
+    if (idx < 0) { fprintf(stderr, "run_measure: nieznana implementacja '%s'\n", name); return 1; }
+    if (impls[idx].func == blis_wrapper && !blis_dgemv_f77) {
+        fprintf(stderr, "run_measure: '%s' niedostepna (AOCL-BLAS)\n", name);
+        return 2;
+    }
+    double* A = (double*)aligned_alloc(32, (size_t)rows * cols * sizeof(double));
+    double* x = (double*)aligned_alloc(32, (size_t)cols * sizeof(double));
+    double* y = (double*)aligned_alloc(32, (size_t)rows * sizeof(double));
+    if (!A || !x || !y) { fprintf(stderr, "alloc failed\n"); return 1; }
+    srand(42);
+    gen_double_arr(A, (size_t)rows * cols);
+    gen_double_arr(x, cols);
+    double alpha = 1.0, beta = 0.0;
+    memset(y, 0, (size_t)rows * sizeof(double));
+    for (int w = 0; w < WARMUP_ITERATIONS; w++) impls[idx].func(rows, cols, alpha, A, x, beta, y);
+    for (int it = 0; it < iterations; it++) impls[idx].func(rows, cols, alpha, A, x, beta, y);
+    free(A); free(x); free(y);
+    return 0;
+}
+
 static void print_usage(const char* prog) {
     printf("Uzycie:\n");
     printf("  %s                          - uruchamia preset 'medium'\n", prog);
@@ -268,6 +296,8 @@ int main(int argc, char* argv[]) {
     int custom_iter = 0, custom_rows = 0, custom_cols = 0;
     int run_all = 0;
     const char* single_preset = NULL;
+    const char* measure_impl = NULL;
+    int list_impls = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--json") == 0 && i + 1 < argc) {
@@ -284,9 +314,24 @@ int main(int argc, char* argv[]) {
             print_usage(argv[0]);
             blis_loader_shutdown();
             return 0;
+        } else if (strcmp(argv[i], "--measure") == 0 && i + 1 < argc) {
+            measure_impl = argv[++i];
+        } else if (strcmp(argv[i], "--list-impls") == 0) {
+            list_impls = 1;
         } else {
             single_preset = argv[i];
         }
+    }
+
+    if (list_impls) {
+        for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) printf("%s\n", impls[i].name);
+        blis_loader_shutdown();
+        return 0;
+    }
+    if (measure_impl) {
+        int mrc = run_measure(measure_impl, custom_rows, custom_cols, custom_iter, impls);
+        blis_loader_shutdown();
+        return mrc;
     }
 
     print_system_header("GEMV Benchmark");

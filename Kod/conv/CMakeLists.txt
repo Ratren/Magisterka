@@ -31,7 +31,6 @@ add_library(conv_impl STATIC
     conv_nchwc.c
     conv_oc_blocked.c
     conv_winograd.c
-    conv_libxsmm.c
     conv_zen3.c
 )
 target_link_libraries(conv_impl PUBLIC OpenMP::OpenMP_C common)

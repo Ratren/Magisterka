@@ -12,7 +12,8 @@ void conv_naive(int Cin, int H, int W, int KH, int KW, int Cout,
                     for (int kh = 0; kh < KH; kh++) {
                         for (int kw = 0; kw < KW; kw++) {
                             sum += X[ic * H * W + (oh + kh) * W + (ow + kw)] *
-                                   Wk[oc * Cin * KH * KW + ic * KH * KW + kh * KW + kw];
+                                   Wk[oc * Cin * KH * KW + ic * KH * KW +
+                                      (KH - 1 - kh) * KW + (KW - 1 - kw)];
                         }
                     }
                 }

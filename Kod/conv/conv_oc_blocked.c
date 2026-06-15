@@ -31,7 +31,7 @@ static void reorder_W_ocblocked(int Cout, int Cin, int KH, int KW,
                     for (int co = 0; co < OCB; co++) {
                         int oc = cob * OCB + co;
                         Wt[((((size_t)cob * Cin + ic) * KH + kh) * KW + kw) * OCB + co] =
-                            Wk[(((size_t)oc * Cin + ic) * KH + kh) * KW + kw];
+                            Wk[(((size_t)oc * Cin + ic) * KH + (KH - 1 - kh)) * KW + (KW - 1 - kw)];
                     }
 }
 
@@ -123,7 +123,7 @@ void conv_oc_blocked(int Cin, int H, int W, int KH, int KW, int Cout,
                     for (int kh = 0; kh < KH; kh++)
                         for (int kw = 0; kw < KW; kw++)
                             s += X[((size_t)ic * H + (oh + kh)) * W + (ow + kw)] *
-                                 Wk[(((size_t)oc * Cin + ic) * KH + kh) * KW + kw];
+                                 Wk[(((size_t)oc * Cin + ic) * KH + (KH - 1 - kh)) * KW + (KW - 1 - kw)];
                 Y[((size_t)oc * OH + oh) * OW + ow] = s;
             }
     }

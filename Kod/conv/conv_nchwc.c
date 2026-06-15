@@ -50,7 +50,7 @@ static void reorder_W_to_blocked(int Cout, int Cin, int KH, int KW,
                             int oc = cob * CB + co;
                             int ic = cib * CB + ci;
                             Wt[((((cob * Cib_blk + cib) * KH + kh) * KW + kw) * CB + ci) * CB + co] =
-                                Wk[((oc * Cin + ic) * KH + kh) * KW + kw];
+                                Wk[((oc * Cin + ic) * KH + (KH - 1 - kh)) * KW + (KW - 1 - kw)];
                         }
                     }
                 }

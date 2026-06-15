@@ -78,7 +78,7 @@ def run_kernel(kernel: str, preset_file: Path, json_out: Path,
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(threads)
     extra_lib_dirs = []
-    for sub in ("blis_install/lib", "libxsmm_install/lib"):
+    for sub in ("blis_install/lib",):
         d = ROOT / sub
         if d.is_dir():
             extra_lib_dirs.append(str(d))

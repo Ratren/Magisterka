@@ -80,8 +80,12 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
     for (int oc = 0; oc < Cout; oc++) {
         for (int ic = 0; ic < Cin; ic++) {
             const float* g = &Wk[(oc * Cin + ic) * 9];
+            float gf[9];
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 3; j++)
+                    gf[i * 3 + j] = g[(2 - i) * 3 + (2 - j)];
             float u[16];
-            wino_filter_transform(g, u);
+            wino_filter_transform(gf, u);
             for (int i = 0; i < TT; i++)
                 U[(size_t)i * Cout * Cin + (size_t)oc * Cin + ic] = u[i];
         }
@@ -149,7 +153,7 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
                         for (int kh = 0; kh < 3; kh++)
                             for (int kw = 0; kw < 3; kw++)
                                 s += X[((size_t)ic * H + (oh + kh)) * W + (ow + kw)] *
-                                     Wk[((size_t)oc * Cin + ic) * 9 + kh * 3 + kw];
+                                     Wk[((size_t)oc * Cin + ic) * 9 + (2 - kh) * 3 + (2 - kw)];
                     Y[((size_t)oc * OH + oh) * OW + ow] = s;
                 }
             }
@@ -160,7 +164,7 @@ void conv_winograd(int Cin, int H, int W, int KH, int KW, int Cout,
                         for (int kh = 0; kh < 3; kh++)
                             for (int kw = 0; kw < 3; kw++)
                                 s += X[((size_t)ic * H + (oh + kh)) * W + (ow + kw)] *
-                                     Wk[((size_t)oc * Cin + ic) * 9 + kh * 3 + kw];
+                                     Wk[((size_t)oc * Cin + ic) * 9 + (2 - kh) * 3 + (2 - kw)];
                     Y[((size_t)oc * OH + oh) * OW + ow] = s;
                 }
             }

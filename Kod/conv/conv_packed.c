@@ -14,7 +14,7 @@ void conv_pack_W_oc_innermost(int Cin, int KH, int KW, int Cout,
             for (int kw = 0; kw < KW; kw++)
                 for (int oc = 0; oc < Cout; oc++)
                     W_pack[((ic * KH + kh) * KW + kw) * Cout + oc] =
-                        Wk[((oc * Cin + ic) * KH + kh) * KW + kw];
+                        Wk[((oc * Cin + ic) * KH + (KH - 1 - kh)) * KW + (KW - 1 - kw)];
 }
 
 ALWAYS_INLINE HOT void ukr_packed(int Cin, int KH, int KW, int Cout,
@@ -62,7 +62,7 @@ static void edge_scalar_p(int Cin, int H, int W, int KH, int KW, int Cout,
                 for (int kh = 0; kh < KH; kh++)
                     for (int kw = 0; kw < KW; kw++)
                         sum += X[ic * H * W + (oh + kh) * W + (ow + kw)] *
-                               Wk[((oc * Cin + ic) * KH + kh) * KW + kw];
+                               Wk[((oc * Cin + ic) * KH + (KH - 1 - kh)) * KW + (KW - 1 - kw)];
             Y[oc * OH * OW + oh * OW + ow] = sum;
         }
     }

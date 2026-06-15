@@ -57,7 +57,7 @@ static void edge_scalar(int Cin, int H, int W, int KH, int KW, int Cout,
                 for (int kh = 0; kh < KH; kh++) {
                     for (int kw = 0; kw < KW; kw++) {
                         sum += X[ic * H * W + (oh + kh) * W + (ow + kw)] *
-                               Wk[((oc * Cin + ic) * KH + kh) * KW + kw];
+                               Wk[((oc * Cin + ic) * KH + (KH - 1 - kh)) * KW + (KW - 1 - kw)];
                     }
                 }
             }

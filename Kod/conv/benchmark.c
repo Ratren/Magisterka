@@ -17,7 +17,7 @@ typedef void (*blis_sgemm_f77_func)(const char*, const char*,
                                     const float*, float*, const int*);
 blis_sgemm_f77_func conv_blis_sgemm_f77 = NULL;
 
-#define NUM_IMPLEMENTATIONS 12
+#define NUM_IMPLEMENTATIONS 11
 #define NUM_RUNS 5
 #define WARMUP_ITERATIONS 3
 #define BUDGET_PER_RUN_SEC 1.0
@@ -137,19 +137,11 @@ static void run_case(int Cin, int H, int W, int K, int Cout, int iterations,
     gen_float_arr(Wk, wSize);
 
     memset(Y_ref, 0, ySize * sizeof(float));
-    if (libxsmm_loader_ok()) {
-        conv_libxsmm(Cin, H, W, K, K, Cout, X, Wk, Y_ref);
-    } else {
-        conv_im2col_openblas(Cin, H, W, K, K, Cout, X, Wk, Y_ref);
-    }
+    conv_im2col_openblas(Cin, H, W, K, K, Cout, X, Wk, Y_ref);
 
     for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) {
         printf("  [%d/%d] %-22s", i + 1, NUM_IMPLEMENTATIONS, impls[i].name);
         fflush(stdout);
-        if (impls[i].func == conv_libxsmm && !libxsmm_loader_ok()) {
-            printf(" SKIPPED (libxsmm not loaded)\n");
-            continue;
-        }
         if (impls[i].func == conv_im2col_blis && !conv_blis_sgemm_f77) {
             printf(" SKIPPED (AOCL-BLAS not loaded)\n");
             continue;
@@ -222,6 +214,42 @@ static void run_preset(const char* name, int Cin, int H, int W, int K, int Cout,
     if (out) snapshot(out, name, Cin, H, W, K, Cout, impls);
 }
 
+static int run_measure(const char* name, int Cin, int H, int W, int K, int Cout,
+                       int iterations, Impl* impls) {
+    if (Cin <= 0 || H <= 0 || W <= 0 || K <= 0 || Cout <= 0 || iterations <= 0) {
+        fprintf(stderr, "run_measure: wymagane --custom <iter> <Cin> <H> <W> <K> <Cout>\n");
+        return 1;
+    }
+    int idx = -1;
+    for (int i = 0; i < NUM_IMPLEMENTATIONS; i++)
+        if (strcmp(impls[i].name, name) == 0) { idx = i; break; }
+    if (idx < 0) { fprintf(stderr, "run_measure: nieznana implementacja '%s'\n", name); return 1; }
+    if (impls[idx].func == conv_im2col_blis && !conv_blis_sgemm_f77) {
+        fprintf(stderr, "run_measure: '%s' niedostepna (AOCL-BLAS)\n", name);
+        return 2;
+    }
+    if (K > H || K > W) {
+        fprintf(stderr, "run_measure: K (%d) przekracza H (%d) lub W (%d)\n", K, H, W);
+        return 1;
+    }
+    int OH = H - K + 1, OW = W - K + 1;
+    size_t xSize = (size_t)Cin * H * W;
+    size_t wSize = (size_t)Cout * Cin * K * K;
+    size_t ySize = (size_t)Cout * OH * OW;
+    float* X  = (float*)aligned_alloc(64, xSize * sizeof(float));
+    float* Wk = (float*)aligned_alloc(64, wSize * sizeof(float));
+    float* Y  = (float*)aligned_alloc(64, ySize * sizeof(float));
+    if (!X || !Wk || !Y) { fprintf(stderr, "alloc failed\n"); return 1; }
+    srand(42);
+    gen_float_arr(X, xSize);
+    gen_float_arr(Wk, wSize);
+    memset(Y, 0, ySize * sizeof(float));
+    for (int w = 0; w < WARMUP_ITERATIONS; w++) impls[idx].func(Cin, H, W, K, K, Cout, X, Wk, Y);
+    for (int it = 0; it < iterations; it++) impls[idx].func(Cin, H, W, K, K, Cout, X, Wk, Y);
+    free(X); free(Wk); free(Y);
+    return 0;
+}
+
 static void print_usage(const char* prog) {
     printf("Uzycie:\n");
     printf("  %s                                       - uruchamia preset 'small'\n", prog);
@@ -246,7 +274,6 @@ int main(int argc, char* argv[]) {
     goto_set_num_threads(nthreads);
     int has_blis = blis_loader_init(nthreads);
     if (has_blis) conv_blis_sgemm_f77 = (blis_sgemm_f77_func)blis_loader_sym("sgemm_");
-    int has_xsmm = libxsmm_loader_init();
 
     Impl impls[NUM_IMPLEMENTATIONS] = {
         {"Naive",              conv_naive,           {0}, 0, 0, 0, 0, 0},
@@ -260,23 +287,21 @@ int main(int argc, char* argv[]) {
         {"Zen3 dispatch OMP",  conv_zen3_omp,        {0}, 0, 0, 0, 0, 0},
         {"im2col + OpenBLAS",  conv_im2col_openblas, {0}, 0, 0, 0, 0, 0},
         {"im2col + AOCL-BLAS",      conv_im2col_blis,     {0}, 0, 0, 0, 0, 0},
-        {"libxsmm",            conv_libxsmm,         {0}, 0, 0, 0, 0, 0},
     };
-    char openblas_name[40], blis_name_buf[40], xsmm_name_buf[40];
+    char openblas_name[40], blis_name_buf[40];
     snprintf(openblas_name, sizeof(openblas_name), "im2col + OpenBLAS (%dT)", nthreads);
     snprintf(blis_name_buf, sizeof(blis_name_buf), "im2col + AOCL-BLAS (%dT)%s",
              nthreads, conv_blis_sgemm_f77 ? "" : " N/A");
-    snprintf(xsmm_name_buf, sizeof(xsmm_name_buf), "libxsmm%s",
-             has_xsmm ? "" : " N/A");
     impls[9].name = openblas_name;
     impls[10].name = blis_name_buf;
-    impls[11].name = xsmm_name_buf;
 
     const char* json_path = NULL;
     const char* preset_file = NULL;
     int custom_iter = 0, cCin = 0, cH = 0, cW = 0, cK = 0, cCout = 0;
     int run_all = 0;
     const char* single_preset = NULL;
+    const char* measure_impl = NULL;
+    int list_impls = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--json") == 0 && i + 1 < argc) {
@@ -293,9 +318,24 @@ int main(int argc, char* argv[]) {
             print_usage(argv[0]);
             blis_loader_shutdown();
             return 0;
+        } else if (strcmp(argv[i], "--measure") == 0 && i + 1 < argc) {
+            measure_impl = argv[++i];
+        } else if (strcmp(argv[i], "--list-impls") == 0) {
+            list_impls = 1;
         } else {
             single_preset = argv[i];
         }
+    }
+
+    if (list_impls) {
+        for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) printf("%s\n", impls[i].name);
+        blis_loader_shutdown();
+        return 0;
+    }
+    if (measure_impl) {
+        int mrc = run_measure(measure_impl, cCin, cH, cW, cK, cCout, custom_iter, impls);
+        blis_loader_shutdown();
+        return mrc;
     }
 
     print_system_header("Convolution Benchmark");
@@ -367,6 +407,5 @@ int main(int argc, char* argv[]) {
 cleanup:
     if (results) { bench_free_results(results, num_results); free(results); }
     blis_loader_shutdown();
-    libxsmm_loader_shutdown();
     return rc;
 }

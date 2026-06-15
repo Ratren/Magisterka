@@ -40,9 +40,6 @@ void conv_oc_blocked  (int Cin, int H, int W, int KH, int KW, int Cout,
 void conv_winograd    (int Cin, int H, int W, int KH, int KW, int Cout,
                        const float* X, const float* Wk, float* Y);
 
-void conv_libxsmm     (int Cin, int H, int W, int KH, int KW, int Cout,
-                       const float* X, const float* Wk, float* Y);
-
 void conv_zen3        (int Cin, int H, int W, int KH, int KW, int Cout,
                        const float* X, const float* Wk, float* Y);
 

@@ -232,6 +232,35 @@ static void run_preset(const char* name, int M, int N, int K, int iterations,
     if (out) snapshot(out, name, M, N, K, impls);
 }
 
+static int run_measure(const char* name, int M, int N, int K, int iterations, Impl* impls) {
+    if (M <= 0 || N <= 0 || K <= 0 || iterations <= 0) {
+        fprintf(stderr, "run_measure: wymagane --custom <iter> <M> <N> <K>\n");
+        return 1;
+    }
+    int idx = -1;
+    for (int i = 0; i < NUM_IMPLEMENTATIONS; i++)
+        if (strcmp(impls[i].name, name) == 0) { idx = i; break; }
+    if (idx < 0) { fprintf(stderr, "run_measure: nieznana implementacja '%s'\n", name); return 1; }
+    if (impls[idx].func == blis_wrapper && !blis_dgemm_f77) {
+        fprintf(stderr, "run_measure: '%s' niedostepna (AOCL-BLAS)\n", name);
+        return 2;
+    }
+    size_t aSize = (size_t)M * K, bSize = (size_t)K * N, cSize = (size_t)M * N;
+    double* A = (double*)aligned_alloc(64, aSize * sizeof(double));
+    double* B = (double*)aligned_alloc(64, bSize * sizeof(double));
+    double* C = (double*)aligned_alloc(64, cSize * sizeof(double));
+    if (!A || !B || !C) { fprintf(stderr, "alloc failed\n"); return 1; }
+    srand(42);
+    gen_double_arr(A, aSize);
+    gen_double_arr(B, bSize);
+    double alpha = 1.0, beta = 0.0;
+    memset(C, 0, cSize * sizeof(double));
+    for (int w = 0; w < WARMUP_ITERATIONS; w++) impls[idx].func(M, N, K, alpha, A, B, beta, C);
+    for (int it = 0; it < iterations; it++) impls[idx].func(M, N, K, alpha, A, B, beta, C);
+    free(A); free(B); free(C);
+    return 0;
+}
+
 static void print_usage(const char* prog) {
     printf("Uzycie:\n");
     printf("  %s                              - uruchamia preset 'small'\n", prog);
@@ -284,6 +313,8 @@ int main(int argc, char* argv[]) {
     int custom_iter = 0, cM = 0, cN = 0, cK = 0;
     int run_all = 0;
     const char* single_preset = NULL;
+    const char* measure_impl = NULL;
+    int list_impls = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--json") == 0 && i + 1 < argc) {
@@ -301,9 +332,24 @@ int main(int argc, char* argv[]) {
             print_usage(argv[0]);
             blis_loader_shutdown();
             return 0;
+        } else if (strcmp(argv[i], "--measure") == 0 && i + 1 < argc) {
+            measure_impl = argv[++i];
+        } else if (strcmp(argv[i], "--list-impls") == 0) {
+            list_impls = 1;
         } else {
             single_preset = argv[i];
         }
+    }
+
+    if (list_impls) {
+        for (int i = 0; i < NUM_IMPLEMENTATIONS; i++) printf("%s\n", impls[i].name);
+        blis_loader_shutdown();
+        return 0;
+    }
+    if (measure_impl) {
+        int mrc = run_measure(measure_impl, cM, cN, cK, custom_iter, impls);
+        blis_loader_shutdown();
+        return mrc;
     }
 
     print_system_header("GEMM Benchmark");

@@ -24,7 +24,8 @@ void conv_blocked(int Cin, int H, int W, int KH, int KW, int Cout,
                     for (int ic = ic0; ic < ic_end; ic++) {
                         for (int kh = 0; kh < KH; kh++) {
                             for (int kw = 0; kw < KW; kw++) {
-                                float w = Wk[oc * Cin * KH * KW + ic * KH * KW + kh * KW + kw];
+                                float w = Wk[oc * Cin * KH * KW + ic * KH * KW +
+                                             (KH - 1 - kh) * KW + (KW - 1 - kw)];
                                 for (int oh = oh0; oh < oh_end; oh++) {
                                     const float* xrow = &X[ic * H * W + (oh + kh) * W + kw];
                                     float* yrow = &Y[oc * OH * OW + oh * OW];

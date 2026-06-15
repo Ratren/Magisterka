@@ -19,7 +19,7 @@ void im2col(int Cin, int H, int W, int KH, int KW,
     for (int ic = 0; ic < Cin; ic++) {
         for (int kh = 0; kh < KH; kh++) {
             for (int kw = 0; kw < KW; kw++) {
-                int row = (ic * KH + kh) * KW + kw;
+                int row = (ic * KH + (KH - 1 - kh)) * KW + (KW - 1 - kw);
                 float* dst = &col[row * OH * OW];
                 for (int oh = 0; oh < OH; oh++) {
                     const float* src = &X[ic * H * W + (oh + kh) * W + kw];

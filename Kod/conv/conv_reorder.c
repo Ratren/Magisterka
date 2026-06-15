@@ -12,7 +12,8 @@ void conv_reorder(int Cin, int H, int W, int KH, int KW, int Cout,
         for (int ic = 0; ic < Cin; ic++) {
             for (int kh = 0; kh < KH; kh++) {
                 for (int kw = 0; kw < KW; kw++) {
-                    float w = Wk[oc * Cin * KH * KW + ic * KH * KW + kh * KW + kw];
+                    float w = Wk[oc * Cin * KH * KW + ic * KH * KW +
+                                 (KH - 1 - kh) * KW + (KW - 1 - kw)];
                     for (int oh = 0; oh < OH; oh++) {
                         const float* xrow = &X[ic * H * W + (oh + kh) * W + kw];
                         float* yrow = &Y[oc * OH * OW + oh * OW];

@@ -1,0 +1,212 @@
+[dot_l1_fit]
+kernel = dot
+size = 2048
+iterations = 5000000
+
+[dot_l2_fit]
+kernel = dot
+size = 32768
+iterations = 300000
+
+[dot_l3_fit]
+kernel = dot
+size = 2097152
+iterations = 2000
+
+[dot_dram]
+kernel = dot
+size = 67108864
+iterations = 50
+
+[gemv_tiny]
+kernel = gemv
+rows = 64
+cols = 64
+iterations = 5000000
+
+[gemv_small]
+kernel = gemv
+rows = 256
+cols = 256
+iterations = 200000
+
+[gemv_medium]
+kernel = gemv
+rows = 1024
+cols = 1024
+iterations = 10000
+
+[gemv_large]
+kernel = gemv
+rows = 4096
+cols = 4096
+iterations = 300
+
+[gemv_wide]
+kernel = gemv
+rows = 256
+cols = 8192
+iterations = 5000
+
+[gemv_tall]
+kernel = gemv
+rows = 8192
+cols = 256
+iterations = 5000
+
+[gemm_tiny]
+kernel = gemm
+m = 64
+n = 64
+k = 64
+iterations = 1000
+
+[gemm_small]
+kernel = gemm
+m = 256
+n = 256
+k = 256
+iterations = 100
+
+[gemm_medium]
+kernel = gemm
+m = 1024
+n = 1024
+k = 1024
+iterations = 10
+
+[gemm_large]
+kernel = gemm
+m = 4096
+n = 4096
+k = 4096
+iterations = 2
+
+[gemm_rank_k]
+kernel = gemm
+m = 2048
+n = 2048
+k = 128
+iterations = 20
+
+[gemm_tall_K]
+kernel = gemm
+m = 128
+n = 2048
+k = 2048
+iterations = 20
+
+[gemm_odd]
+kernel = gemm
+m = 1252
+n = 1500
+k = 257
+iterations = 20
+
+[conv_tiny]
+kernel = conv
+cin = 16
+h = 32
+w = 32
+k = 3
+cout = 16
+iterations = 500
+
+[conv_small]
+kernel = conv
+cin = 64
+h = 56
+w = 56
+k = 3
+cout = 64
+iterations = 100
+
+[conv_mid]
+kernel = conv
+cin = 128
+h = 28
+w = 28
+k = 3
+cout = 128
+iterations = 50
+
+[conv_large]
+kernel = conv
+cin = 256
+h = 14
+w = 14
+k = 3
+cout = 256
+iterations = 50
+
+[conv_xlarge]
+kernel = conv
+cin = 512
+h = 14
+w = 14
+k = 3
+cout = 512
+iterations = 20
+
+[conv_pointwise]
+kernel = conv
+cin = 128
+h = 56
+w = 56
+k = 1
+cout = 128
+iterations = 50
+
+[conv_kernel5]
+kernel = conv
+cin = 32
+h = 64
+w = 64
+k = 5
+cout = 32
+iterations = 50
+
+[conv_kernel7]
+kernel = conv
+cin = 64
+h = 112
+w = 112
+k = 7
+cout = 64
+iterations = 20
+
+[conv_rgb3x3]
+kernel = conv
+cin = 3
+h = 224
+w = 224
+k = 3
+cout = 64
+iterations = 20
+
+[conv_rgb5x5]
+kernel = conv
+cin = 3
+h = 128
+w = 128
+k = 5
+cout = 32
+iterations = 50
+
+[conv_rgb7x7]
+kernel = conv
+cin = 3
+h = 120
+w = 120
+k = 7
+cout = 64
+iterations = 20
+
+[conv_rgb_fhd]
+kernel = conv
+cin = 3
+h = 1080
+w = 1920
+k = 3
+cout = 64
+iterations = 10

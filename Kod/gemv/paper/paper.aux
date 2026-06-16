@@ -1,0 +1,85 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{dongarra1990}
+\citation{williams2009}
+\@writefile{toc}{\contentsline {title}{A Hand-Optimized GEMV Kernel Outperforming\unskip \ \ignorespaces Production BLAS Libraries on AMD Zen~3}{1}{chapter.1}\protected@file@percent }
+\@writefile{toc}{\authcount {1}}
+\@writefile{toc}{\contentsline {author}{Rafa{\l } Lenart}{1}{chapter.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{openblas}
+\citation{vanzee2015}
+\citation{amd_sog}
+\citation{amd_sog}
+\citation{fog}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Background and Related Work}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}GEMV Operation}{2}{subsection.2.1}\protected@file@percent }
+\newlabel{sec:gemv_op}{{2.1}{2}{GEMV Operation}{subsection.2.1}{}}
+\newlabel{eq:gemv}{{1}{2}{GEMV Operation}{equation.1}{}}
+\newlabel{eq:ai}{{2}{2}{GEMV Operation}{equation.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}AMD Zen~3 Microarchitecture}{2}{subsection.2.2}\protected@file@percent }
+\citation{fog}
+\citation{amd_sog}
+\citation{williams2009}
+\citation{amd_sog,fog,chipsandcheese}
+\citation{amd_sog,fog,chipsandcheese}
+\citation{openblas}
+\citation{goto2008}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Bandwidth ceilings and GEMV performance limits per memory level (AI~$= 0.25$~FLOP/byte). Practical bandwidths from~\cite  {amd_sog,fog,chipsandcheese}.}}{3}{table.1}\protected@file@percent }
+\newlabel{tab:ceilings}{{1}{3}{Bandwidth ceilings and GEMV performance limits per memory level (AI~$= 0.25$~FLOP/byte). Practical bandwidths from~\cite {amd_sog,fog,chipsandcheese}}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Roofline Model}{3}{subsection.2.3}\protected@file@percent }
+\newlabel{eq:roofline}{{3}{3}{Roofline Model}{equation.3}{}}
+\citation{vanzee2015}
+\citation{aocl}
+\citation{atlas}
+\citation{low2016}
+\citation{fog}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Roofline model for Zen~3 showing bandwidth ceilings from DRAM through L1d cache (diagonal lines) and the compute peak (horizontal line). Colored points show measured ZenGEMV kernel performance at each preset's arithmetic intensity. Small matrices that fit in L1/L2 cache achieve significantly higher throughput than the DRAM-bound prediction.}}{4}{figure.1}\protected@file@percent }
+\newlabel{fig:roofline}{{1}{4}{Roofline model for Zen~3 showing bandwidth ceilings from DRAM through L1d cache (diagonal lines) and the compute peak (horizontal line). Colored points show measured ZenGEMV kernel performance at each preset's arithmetic intensity. Small matrices that fit in L1/L2 cache achieve significantly higher throughput than the DRAM-bound prediction}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Related Work}{4}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Implementation}{5}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Kernel Design: ZenGEMV}{5}{subsection.3.1}\protected@file@percent }
+\newlabel{lst:kernel}{{1.1}{5}{Inner loop of ZenGEMV (abbreviated, showing 1 of 4 rows)}{lstlisting.1.1}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1.1}Inner loop of ZenGEMV (abbreviated, showing 1 of 4 rows).}{5}{lstlisting.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Parallel Implementation: ZenGEMV-P}{5}{subsection.3.2}\protected@file@percent }
+\newlabel{lst:omp}{{1.2}{6}{Thread work division in ZenGEMV-P}{lstlisting.1.2}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1.2}Thread work division in ZenGEMV-P.}{6}{lstlisting.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Analysis: Why ZenGEMV Beats the Libraries}{6}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}OpenBLAS Overhead}{6}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}BLIS Overhead}{7}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:blis}{{4.2}{7}{BLIS Overhead}{subsection.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Where Libraries Win}{7}{subsection.4.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Benchmark presets with working set sizes and cache residency. Working set computed as $(MN + N + 2M) \times 8$~bytes.}}{8}{table.2}\protected@file@percent }
+\newlabel{tab:presets}{{2}{8}{Benchmark presets with working set sizes and cache residency. Working set computed as $(MN + N + 2M) \times 8$~bytes}{table.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Experimental Evaluation}{8}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Benchmark Methodology}{8}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Single-Threaded Results}{8}{subsection.5.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Single-threaded GEMV performance comparison. Annotations above ZenGEMV bars show speedup relative to OpenBLAS; annotations above BLIS bars show ZenGEMV's speedup relative to BLIS.}}{9}{figure.2}\protected@file@percent }
+\newlabel{fig:1t}{{2}{9}{Single-threaded GEMV performance comparison. Annotations above ZenGEMV bars show speedup relative to OpenBLAS; annotations above BLIS bars show ZenGEMV's speedup relative to BLIS}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Multi-Threaded Results}{9}{subsection.5.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Single-threaded GEMV performance (median GFLOPS, 5~runs). Speedup columns show ZenGEMV divided by the respective library's throughput.}}{10}{table.3}\protected@file@percent }
+\newlabel{tab:1t}{{3}{10}{Single-threaded GEMV performance (median GFLOPS, 5~runs). Speedup columns show ZenGEMV divided by the respective library's throughput}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Multi-threaded GEMV performance (median GFLOPS, 6~cores, 5~runs). Speedup columns show ZenGEMV-P divided by each library.}}{10}{table.4}\protected@file@percent }
+\newlabel{tab:mt}{{4}{10}{Multi-threaded GEMV performance (median GFLOPS, 6~cores, 5~runs). Speedup columns show ZenGEMV-P divided by each library}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Theoretical vs.\ Achieved Performance}{10}{subsection.5.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Multi-threaded GEMV performance (6 physical cores). Annotations above ZenGEMV-P bars show speedup relative to OpenBLAS; annotations above BLIS bars show ZenGEMV-P's speedup relative to BLIS.}}{11}{figure.3}\protected@file@percent }
+\newlabel{fig:mt}{{3}{11}{Multi-threaded GEMV performance (6 physical cores). Annotations above ZenGEMV-P bars show speedup relative to OpenBLAS; annotations above BLIS bars show ZenGEMV-P's speedup relative to BLIS}{figure.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion and Future Work}{11}{section.6}\protected@file@percent }
+\bibcite{dongarra1990}{1}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Roofline predictions vs.\ measured ZenGEMV performance.}}{12}{table.5}\protected@file@percent }
+\newlabel{tab:theory}{{5}{12}{Roofline predictions vs.\ measured ZenGEMV performance}{table.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{12}{section.7}\protected@file@percent }
+\bibcite{goto2008}{2}
+\bibcite{vanzee2015}{3}
+\bibcite{williams2009}{4}
+\bibcite{amd_sog}{5}
+\bibcite{openblas}{6}
+\bibcite{aocl}{7}
+\bibcite{fog}{8}
+\bibcite{chipsandcheese}{9}
+\bibcite{low2016}{10}
+\bibcite{atlas}{11}
+\bibcite{intel_intrinsics}{12}
+\bibcite{gcc}{13}
+\gdef \@abspage@last{13}

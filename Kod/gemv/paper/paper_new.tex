@@ -37,12 +37,19 @@
 \IEEEauthorblockA{0009-0007-8389-7835\\
 Maria Curie-Sk{\l}odowska University\\
 Lublin, Poland\\
-Email: 307726@office.umcs.pl}
+Email: rafa.lenart12@gmail.com}
 \and
-\IEEEauthorblockN{Beata Bylina, Jaros{\l}aw Bylina}
-\IEEEauthorblockA{0000-0002-1327-9747\\0000-0002-0319-2525\\
+\IEEEauthorblockN{Beata Bylina}
+\IEEEauthorblockA{0000-0002-1327-9747\\
 Maria Curie-Sk{\l}odowska University\\
-Lublin, Poland}
+Lublin, Poland\\
+Email: beata.bylina@umcs.pl}
+\and
+\IEEEauthorblockN{Jaros{\l}aw Bylina}
+\IEEEauthorblockA{0000-0002-0319-2525\\
+Maria Curie-Sk{\l}odowska University\\
+Lublin, Poland\\
+Email: jaroslaw.bylina@umcs.pl}
 }
 
 
@@ -252,7 +259,7 @@ roofline diagram with our measured ZenGEMV performance for each benchmark preset
 demonstrating how cache residency determines the reachable performance level.
 
 
-\begin{figure}[tbp]
+\begin{figure*}[tbp]
 \centering
 \includegraphics[width=\linewidth]{roofline.pdf}
 \caption{Roofline model for Zen~3. Diagonal lines show memory bandwidth
@@ -261,7 +268,7 @@ performance ceilings at each cache level ($\text{BW} \times 0.25$).
 Points show measured ZenGEMV performance at each preset's operational intensity,
 illustrating how cache residency determines the attainable performance level.}
 \label{fig:roofline}
-\end{figure}
+\end{figure*}
 
 \subsection{Related Work}
 
@@ -802,18 +809,73 @@ hand-written assembly kernel to close the remaining gap to the roofline ceiling,
 shape-adaptive dispatch for non-square matrices, and extended support for
 arbitrary memory layouts and scaling parameters.
 
+\balance
+
 
 \begin{thebibliography}{99}
+
+\bibitem{kblas}
+A. Abdelfattah, D. Keyes, and H. Ltaief,
+``KBLAS: An optimized library for dense matrix-vector multiplication on GPU accelerators,''
+\textit{ACM Trans. Math. Softw.,} vol.~42, no.~3, p.~18, 2016.
+\url{https://doi.org/10.1145/2818311}
 
 \bibitem{blas}
 L.~S. Blackford, A. Petitet, R. Pozo, et al.,
 ``An updated set of basic linear algebra subprograms (BLAS),''
 \textit{ACM Trans. Math. Softw.,} vol.~28, no.~2, pp.~135--151, 2002.
 
+\bibitem{chandra2001parallel}
+R. Chandra, L. Dagum, D. Kohr, R. Menon, D. Maydan, and J. McDonald,
+\textit{Parallel Programming in OpenMP.}
+Morgan Kaufmann, 2001.
+
+\bibitem{zen3}
+M. Evers, L. Barnes, and M. Clark,
+``The AMD next-generation `Zen 3' core,''
+\textit{IEEE Micro,} vol.~42, no.~3, pp.~7--12, 2022.
+\url{https://doi.org/10.1109/MM.2022.3152788}
+
+\bibitem{ramcalc}
+FinlayDaG33k,
+``RAM Bandwidth Calculator.''
+\url{https://edu.finlaydag33k.nl/calculating%20ram%20bandwidth/},
+\url{https://gitlab.com/FinlayDaG33k/ram-calculator}
+
+\bibitem{fog2011instruction}
+A. Fog,
+``Instruction tables: lists of instruction latencies, throughputs and micro-operation breakdowns
+for Intel, AMD, and VIA CPUs,'' 2011, last updated Sep.~20, 2025.
+\url{https://www.agner.org/optimize/instruction_tables.pdf}
+
+\bibitem{fog2017microarchitecture}
+A. Fog,
+``The microarchitecture of Intel, AMD, and VIA CPUs: an optimization guide for assembly programmers
+and compiler makers,'' 2017, last updated Dec.~15, 2025.
+\url{https://www.agner.org/optimize/microarchitecture.pdf}
+
+\bibitem{avx2}
+P. Gepner,
+``Using AVX2 instruction set to increase performance of high performance computing code,''
+\textit{Computing and Informatics,} vol.~36, no.~5, pp.~1001--1018, 2017.
+\url{https://doi.org/10.4149/cai_2017_5_1001}
+
 \bibitem{golub2013}
 G.~H. Golub and C.~F. Van~Loan,
 \textit{Matrix Computations,} 4th~ed.
 Baltimore: Johns Hopkins University Press, 2013.
+
+\bibitem{gotoblas}
+K. Goto and R.~A. van~de~Geijn,
+``Anatomy of high-performance matrix multiplication,''
+\textit{ACM Trans. Math. Softw.,} vol.~34, no.~3, p.~12, 2008.
+\url{https://doi.org/10.1145/1356052.1356053}
+
+\bibitem{hassan2017gemv}
+S.~A. Hassan, M.~M. Mahmoud, A.~M. Hemeida, and M.~A. Saber,
+``Effective implementation of matrix--vector multiplication on Intel's AVX multicore processor,''
+\textit{Comput. Lang. Syst. Struct.,} vol.~51, pp.~158--175, 2017.
+\url{https://doi.org/10.1016/j.cl.2017.06.003}
 
 \bibitem{waferllm}
 C. He, Y. Huang, P. Mu, Z. Miao, J. Xue, L. Ma, et al.,
@@ -828,73 +890,20 @@ in \textit{Proc. 14th EuroSys Conf. (EuroSys'19),}
 New York: ACM, 2019, pp.~41:1--41:16.
 \url{https://doi.org/10.1145/3302424.3303949}
 
-\bibitem{openblas}
-OpenBLAS: An optimized BLAS library.
-\url{https://www.openblas.net},
-\url{https://github.com/OpenMathLib/OpenBLAS}
+\bibitem{liang2016gemv}
+Y. Liang and Y. Zhang,
+``GEMV optimization on Intel AVX processor,''
+in \textit{Proc. IEEE Int. Conf. High Performance Computing and Communications,} 2016.
 
-\bibitem{aoclblas}
-AMD, ``AOCL-BLAS (BLIS fork with AMD optimizations),'' version 5.2.0.
-\url{https://github.com/amd/blis}
-
-\bibitem{avx2}
-P. Gepner,
-``Using AVX2 instruction set to increase performance of high performance computing code,''
-\textit{Computing and Informatics,} vol.~36, no.~5, pp.~1001--1018, 2017.
-\url{https://doi.org/10.4149/cai_2017_5_1001}
-
-\bibitem{fma}
-H. Zhang, D. Chen, and S.~B. Ko,
-``Efficient multiple-precision floating-point fused multiply-add with mixed-precision support,''
-\textit{IEEE Trans. Comput.,} vol.~68, no.~7, pp.~1035--1048, 2019.
-\url{https://doi.org/10.1109/TC.2019.2895031}
-
-\bibitem{zen3}
-M. Evers, L. Barnes, and M. Clark,
-``The AMD next-generation `Zen 3' core,''
-\textit{IEEE Micro,} vol.~42, no.~3, pp.~7--12, 2022.
-\url{https://doi.org/10.1109/MM.2022.3152788}
-
-\bibitem{roofline}
-S. Williams, A. Waterman, and D.~A. Patterson,
-``Roofline: an insightful visual performance model for multicore architectures,''
-\textit{Commun. ACM,} vol.~52, pp.~65--76, 2009.
-\url{https://doi.org/10.1145/1498765.1498785}
-
-\bibitem{amdsog}
-Advanced Micro Devices,
-``Software optimization guide for AMD EPYC 7003 series processors
-(family 19h models 00h--0Fh),'' rev. 3.00.
-\url{https://kib.kiev.ua/x86docs/AMD/Optimization/56665_3.00_Software\%20Optimization\%20Guide\%20for\%20AMD\%20Family\%2019h\%20Processors\%20\%28PUB\%29.pdf}
-
-\bibitem{fog2011instruction}
-A. Fog,
-``Instruction tables: lists of instruction latencies, throughputs and micro-operation breakdowns
-for Intel, AMD, and VIA CPUs,'' 2011, last updated Sep.~20, 2025.
-\url{https://www.agner.org/optimize/instruction_tables.pdf}
-
-\bibitem{fog2017microarchitecture}
-A. Fog,
-``The microarchitecture of Intel, AMD, and VIA CPUs: an optimization guide for assembly programmers
-and compiler makers,'' 2017, last updated Dec.~15, 2025.
-\url{https://www.agner.org/optimize/microarchitecture.pdf}
-
-\bibitem{ramcalc}
-FinlayDaG33k,
-``RAM Bandwidth Calculator.''
-\url{https://edu.finlaydag33k.nl/calculating%20ram%20bandwidth/},
-\url{https://gitlab.com/FinlayDaG33k/ram-calculator}
+\bibitem{singh2021gemv}
+A.~R. Singh and C. Bassoy,
+``Cache-blocked dense matrix-vector multiplication with FMA on x86 architectures,''
+in \textit{Proc. Int. Conf. Algorithms and Architectures for Parallel Processing,} 2021.
 
 \bibitem{bandwidth}
 Z. Smith,
 ``bandwidth: a memory bandwidth benchmark.''
 \url{https://zs3.me/bandwidth}
-
-\bibitem{gotoblas}
-K. Goto and R.~A. van~de~Geijn,
-``Anatomy of high-performance matrix multiplication,''
-\textit{ACM Trans. Math. Softw.,} vol.~34, no.~3, p.~12, 2008.
-\url{https://doi.org/10.1145/1356052.1356053}
 
 \bibitem{blis}
 F.~G. Van~Zee and R.~A. van~de~Geijn,
@@ -909,42 +918,66 @@ in \textit{Proc. 1998 ACM/IEEE Conf. Supercomputing (SC'98).}
 IEEE, 1998.
 \url{https://doi.org/10.1109/SC.1998.10004}
 
-\bibitem{hassan2017gemv}
-S.~A. Hassan, M.~M. Mahmoud, A.~M. Hemeida, and M.~A. Saber,
-``Effective implementation of matrix--vector multiplication on Intel's AVX multicore processor,''
-\textit{Comput. Lang. Syst. Struct.,} vol.~51, pp.~158--175, 2017.
-\url{https://doi.org/10.1016/j.cl.2017.06.003}
+\bibitem{roofline}
+S. Williams, A. Waterman, and D.~A. Patterson,
+``Roofline: an insightful visual performance model for multicore architectures,''
+\textit{Commun. ACM,} vol.~52, pp.~65--76, 2009.
+\url{https://doi.org/10.1145/1498765.1498785}
+
+\bibitem{fma}
+H. Zhang, D. Chen, and S.~B. Ko,
+``Efficient multiple-precision floating-point fused multiply-add with mixed-precision support,''
+\textit{IEEE Trans. Comput.,} vol.~68, no.~7, pp.~1035--1048, 2019.
+\url{https://doi.org/10.1109/TC.2019.2895031}
+
+
+
+
+
+
+
+
+
+\bibitem{amdsog}
+Advanced Micro Devices,
+``Software optimization guide for AMD EPYC 7003 series processors
+(family 19h models 00h--0Fh),'' rev. 3.00.
+\url{https://kib.kiev.ua/x86docs/AMD/Optimization/56665_3.00_Software\%20Optimization\%20Guide\%20for\%20AMD\%20Family\%2019h\%20Processors\%20\%28PUB\%29.pdf}
+
+\bibitem{aoclblas}
+AMD, ``AOCL-BLAS (BLIS fork with AMD optimizations),'' version 5.2.0.
+\url{https://github.com/amd/blis}
 
 \bibitem{gccmanual}
 Free Software Foundation,
 ``Using the GNU Compiler Collection (GCC),'' version 15.2.0, 2025.
 \url{https://gcc.gnu.org/onlinedocs/gcc-15.2.0/gcc/}
 
-\bibitem{chandra2001parallel}
-R. Chandra, L. Dagum, D. Kohr, R. Menon, D. Maydan, and J. McDonald,
-\textit{Parallel Programming in OpenMP.}
-Morgan Kaufmann, 2001.
+\bibitem{openblas}
+OpenBLAS: An optimized BLAS library.
+\url{https://www.openblas.net},
+\url{https://github.com/OpenMathLib/OpenBLAS}
 
-\bibitem{kblas}
-A. Abdelfattah, D. Keyes, and H. Ltaief,
-``KBLAS: An optimized library for dense matrix-vector multiplication on GPU accelerators,''
-\textit{ACM Trans. Math. Softw.,} vol.~42, no.~3, p.~18, 2016.
-\url{https://doi.org/10.1145/2818311}
 
-\bibitem{liang2016gemv}
-Y. Liang and Y. Zhang,
-``GEMV optimization on Intel AVX processor,''
-in \textit{Proc. IEEE Int. Conf. High Performance Computing and Communications,} 2016.
 
-\bibitem{singh2021gemv}
-A.~R. Singh and C. Bassoy,
-``Cache-blocked dense matrix-vector multiplication with FMA on x86 architectures,''
-in \textit{Proc. Int. Conf. Algorithms and Architectures for Parallel Processing,} 2021.
+
+
+
+
+
+
+
+
+
+
+
+
 
 \end{thebibliography}
 
-\section*{Acknowledgments}
 
-During the preparation of this work, the author used Claude (Anthropic) for proofreading, including grammar, punctuation, and spelling corrections. The author takes full responsibility for the content of this publication.
+% \section*{Acknowledgments}
+% 
+% During the preparation of this work, the author used Claude (Anthropic) for proofreading, including grammar, punctuation, and spelling corrections. The author takes full responsibility for the content of this publication.
 
 \end{document}

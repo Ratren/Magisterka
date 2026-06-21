@@ -61,8 +61,8 @@ The General Matrix-Vector Multiply (GEMV) is a fundamental Level-2 BLAS operatio
 appearing throughout scientific computing and numerical linear algebra.
 GEMV is inherently memory-bound, making effective cache use the dominant optimization factor.
 
-We present a hand-optimized GEMV kernel for AMD Zen~3, implemented using AVX2 and
-FMA intrinsics. Our single-threaded kernel (ZenGEMV) processes 4~rows simultaneously
+We present a hand-optimized GEMV kernel for AMD Zen~3, implemented using
+AVX2 (Advanced Vector Extensions~2) and FMA (fused multiply-add) intrinsics. Our single-threaded kernel (ZenGEMV) processes 4~rows simultaneously
 with dual accumulators per row, creating 8~independent FMA chains that fully saturate
 the Zen~3 pipeline. Benchmarked against OpenBLAS~0.3.31 and AOCL-BLAS~5.2.0 on an
 AMD Ryzen~5~5600, ZenGEMV achieves up to $1.37\times$ speedup over OpenBLAS and
@@ -117,13 +117,16 @@ This paper investigates whether a hand-optimized kernel, tailored to a specific
 microarchitecture and constrained use case, can outperform these general-purpose
 libraries. Our contributions are:
 \begin{enumerate}
-  \item An optimized single-threaded GEMV kernel (ZenGEMV) using AVX2 (Advanced Vector Extensions 2)\cite{avx2} and FMA (Fused Multiply-Add)\cite{fma}
+  \item An optimized single-threaded GEMV kernel (ZenGEMV) using AVX2 (Advanced Vector Extensions~2)\cite{avx2} and FMA (fused multiply-add)\cite{fma}
       intrinsics with dual accumulators that fully saturate the Zen~3\cite{zen3} FMA
       pipeline.
 \item A parallel variant (ZenGEMV-P) with row-parallel decomposition using
       manual thread work division aligned to SIMD boundaries.
-\item A detailed source-level analysis of OpenBLAS and AOCL-BLAS GEMV overhead,
-      explaining where and why performance is lost.
+\item A source-level analysis identifying the concrete cause of lost GEMV
+      performance on Zen~3---most notably OpenBLAS's reuse of a Haswell
+      microkernel that supplies only 4 of the 8 independent FMA chains the
+      dual-FMA pipeline requires---together with a roofline account of where
+      each library's throughput is bound.
 \end{enumerate}
 
 
@@ -143,7 +146,7 @@ $\mathbf{y} \in \mathbb{R}^M$ is the output vector, and $\alpha, \beta$ are
 scalars. The dimensions $M$ (rows) and $N$ (columns) determine both the
 computational cost and the memory footprint of the operation.
 
-The operation requires $2MN$ floating-point operations---one multiply and one add
+The operation requires $2MN$ floating-point operations---one multiplication and one addition
 per element of~$A$. The total data movement is $(MN + N + 2M) \times 8$ bytes
 for double-precision (the matrix~$A$, input vector~$\mathbf{x}$, and the
 output vector~$\mathbf{y}$ read and written), giving an operational intensity\cite{roofline} of:
@@ -215,8 +218,9 @@ cycle at the sustained core frequency of 4.4\,GHz:
       (Fig.~\ref{fig:bandwidth}), but GEMV's highly regular streaming
       access pattern enables more effective hardware prefetching; our
       measured GEMV throughput on DRAM-resident data
-      (Section~\ref{sec:results}) is consistent with the full 51.2\,GB/s
-      ceiling, which we adopt as the practical DRAM bandwidth.
+      (Section~\ref{sec:results}) approaches the full 51.2\,GB/s
+      ceiling, which we therefore adopt as an approximate practical DRAM
+      bandwidth.
 \end{itemize}
 The GEMV ceiling at each level is then computed from Equation~(\ref{eq:roofline})
 as $\text{BW} \times \text{OI}$ (e.g., $267 \times 0.25 = 66.75$~GFLOPS for
@@ -310,6 +314,12 @@ without hand-written assembly, relying on compiler optimizations to remain
 competitive with MKL, BLIS, and OpenBLAS across multiple x86 platforms. In
 contrast, our work deliberately specializes the microkernel for AMD Zen~3,
 trading portability for higher utilization of the specific pipeline resources.
+Cache- and vectorization-aware optimization of dense linear algebra has also
+been studied at FedCSIS, with attention to energy consumption: Bylina et~al.\
+examine how loop transformations and storage order affect both the performance
+and energy of dense matrix factorization on multicore x86\cite{bylina2022wz},
+while Jakobs and R\"unger measure the performance and energy cost of the AVX
+load/store variants that dominate memory-bound kernels\cite{jakobs2018avx}.
 
 
 %=============================================================
@@ -334,7 +344,7 @@ The main loop processes 16~elements per iteration (4~AVX2 loads of 4~doubles
 each), alternating between accumulators~\texttt{a} and~\texttt{b}:
 
 \begin{figure}[tbp]
-\begin{minted}[fontsize=\scriptsize,frame=single,linenos]{c}
+\begin{minted}[fontsize=\scriptsize,frame=single,linenos,numbersep=4pt,xleftmargin=2em]{c}
 for (; j + 15 < cols; j += 16) {
     __m256d x0 = _mm256_load_pd(&x[j]);
     __m256d x1 = _mm256_load_pd(&x[j + 4]);
@@ -380,7 +390,7 @@ parallel for}, which incurs per-iteration scheduling overhead, we use a single
 \texttt{\#pragma omp parallel} region with manual work division:
 
 \begin{figure}[tbp]
-\begin{minted}[fontsize=\scriptsize,frame=single,linenos]{c}
+\begin{minted}[fontsize=\scriptsize,frame=single,linenos,numbersep=4pt,xleftmargin=2em]{c}
 #pragma omp parallel
 {
     int nt  = omp_get_num_threads();
@@ -482,8 +492,8 @@ Despite these overheads, general-purpose libraries have advantages in certain
 scenarios:
 
 \begin{itemize}
-\item \textbf{AOCL-BLAS on medium (1T):} AOCL-BLAS achieves 23.46~GFLOPS vs.\ our
-      22.62~GFLOPS on $1024 \times 1024$. The AOCL-BLAS Zen~3 kernel configuration
+\item \textbf{AOCL-BLAS on medium (1T):} AOCL-BLAS achieves 23.72~GFLOPS vs.\ our
+      22.92~GFLOPS on $1024 \times 1024$. The AOCL-BLAS Zen~3 kernel configuration
       is well-tuned for L3-resident data, and its grouping strategies
       may provide better cache utilization at this specific size.
 \item \textbf{Multi-threaded medium/tall presets:} OpenBLAS and AOCL-BLAS achieve
@@ -715,11 +725,11 @@ utilization---consistent across three different aspect ratios, confirming
 that the kernel's sequential row-major streaming pattern is well-matched
 to the L3 subsystem regardless of matrix shape.
 The large (DRAM) preset measures 102.5\% of the 51.2\,GB/s ceiling.
-This is physically consistent: the $4096\times4096$ matrix (128\,MB)
-exceeds the 32\,MB L3, but across the 5~timed iterations a fraction of
-the matrix remains L3-resident, contributing partial cache reuse above
-the pure DRAM bandwidth. Net of this effect, the kernel effectively
-saturates the DDR4-3200 memory controller.
+Since this marginally exceeds the theoretical figure, the result should be
+read as the kernel saturating the DDR4-3200 memory controller to within
+measurement tolerance, with residual L3 reuse across the 5~timed iterations
+(the $4096\times4096$ matrix at 128\,MB exceeds the 32\,MB L3, yet a fraction
+remains resident between iterations) a plausible source of the small excess.
 
 \textbf{Cross-implementation comparison.}
 At L1d, ZenGEMV's 64.5\% substantially exceeds OpenBLAS (47.0\%) and
@@ -728,9 +738,13 @@ disproportionate fraction of the available bandwidth window at small
 problem sizes. At the L3 level, all three implementations converge to
 84--90\%, with AOCL-BLAS slightly leading on the medium preset
 (89.7\% vs.\ 86.7\%).
-AOCL-BLAS's anomalously low 65.8\% on the wide preset
-($256\times8192$) suggests that its column-blocking strategy is
-suboptimal for extreme aspect ratios.
+AOCL-BLAS's low 65.8\% on the wide preset ($256\times8192$) stems from its
+transpose (DOTXF) code path (\texttt{bli\_gemv\_unf\_var1}), which fuses
+\texttt{BLIS\_DF}$=8$ dot products and so traverses 8~columns concurrently while
+reusing~$\mathbf{x}$ (of length~$N$). At $N=8192$, $\mathbf{x}$ (64\,KB)
+overflows L1---the only L3-resident preset for which it does---and the eight
+64\,KB-strided streams are served less efficiently than ZenGEMV's four-stream,
+row-major pattern, which sustains 86.6\% at the same shape.
 At DRAM, the performance difference becomes 13.1 vs.\ 11.7 vs.\
 12.3\,GFLOPS, consistent with all implementations approaching the same
 physical bandwidth limit---kernel optimizations yield lesser returns
@@ -778,6 +792,11 @@ matrix shapes. A runtime dispatch based on the aspect ratio (wide vs.\ tall vs.\
 square) could select between row-parallel and column-parallel decomposition
 strategies, potentially improving cache utilization for extreme aspect ratios.
 
+\textbf{Application-level impact:} The present evaluation isolates GEMV at the
+kernel level; measuring the kernel within a complete application where GEMV
+dominates runtime would quantify how kernel-level gains translate into overall
+speedups.
+
 It should be noted that the current implementation imposes constraints not present
 in general-purpose libraries: row-major layout, 32-byte aligned memory, and unit
 alpha/beta scalars. Extending support to arbitrary strides and memory layouts
@@ -806,29 +825,59 @@ and computational science contexts where GEMV constitutes a performance-critical
 operation, architecture-specific hand optimization remains a viable and productive
 strategy, even alongside mature general-purpose libraries. Future work includes a
 hand-written assembly kernel to close the remaining gap to the roofline ceiling,
-shape-adaptive dispatch for non-square matrices, and extended support for
-arbitrary memory layouts and scaling parameters.
+shape-adaptive dispatch for non-square matrices, extended support for
+arbitrary memory layouts and scaling parameters, and an evaluation of the kernel
+within a complete application where GEMV dominates runtime.
 
 \balance
 
 
 \begin{thebibliography}{99}
 
-\bibitem{kblas}
-A. Abdelfattah, D. Keyes, and H. Ltaief,
-``KBLAS: An optimized library for dense matrix-vector multiplication on GPU accelerators,''
-\textit{ACM Trans. Math. Softw.,} vol.~42, no.~3, p.~18, 2016.
-\url{https://doi.org/10.1145/2818311}
-
 \bibitem{blas}
 L.~S. Blackford, A. Petitet, R. Pozo, et al.,
 ``An updated set of basic linear algebra subprograms (BLAS),''
 \textit{ACM Trans. Math. Softw.,} vol.~28, no.~2, pp.~135--151, 2002.
+\url{https://doi.org/10.1145/567806.567807}
 
-\bibitem{chandra2001parallel}
-R. Chandra, L. Dagum, D. Kohr, R. Menon, D. Maydan, and J. McDonald,
-\textit{Parallel Programming in OpenMP.}
-Morgan Kaufmann, 2001.
+\bibitem{golub2013}
+G.~H. Golub and C.~F. Van~Loan,
+\textit{Matrix Computations,} 4th~ed.
+Baltimore: Johns Hopkins University Press, 2013.
+
+\bibitem{waferllm}
+C. He, Y. Huang, P. Mu, Z. Miao, J. Xue, L. Ma, et al.,
+``WaferLLM: Large language model inference at wafer scale,''
+arXiv:2502.04563 [cs.LG], 2025.
+\url{https://doi.org/10.48550/arXiv.2502.04563}
+
+\bibitem{grnn}
+C. Holmes, D. Mawhirter, Y. He, F. Yan, and B. Wu,
+``GRNN: Low-latency and scalable RNN inference on GPUs,''
+in \textit{Proc. 14th EuroSys Conf. (EuroSys'19),}
+New York: ACM, 2019, pp.~41:1--41:16.
+\url{https://doi.org/10.1145/3302424.3303949}
+
+\bibitem{openblas}
+OpenBLAS: An optimized BLAS library.
+\url{https://www.openblas.net},
+\url{https://github.com/OpenMathLib/OpenBLAS}
+
+\bibitem{aoclblas}
+AMD, ``AOCL-BLAS (BLIS fork with AMD optimizations),'' version 5.2.0.
+\url{https://github.com/amd/blis}
+
+\bibitem{avx2}
+P. Gepner,
+``Using AVX2 instruction set to increase performance of high performance computing code,''
+\textit{Computing and Informatics,} vol.~36, no.~5, pp.~1001--1018, 2017.
+\url{https://doi.org/10.4149/cai_2017_5_1001}
+
+\bibitem{fma}
+H. Zhang, D. Chen, and S.~B. Ko,
+``Efficient multiple-precision floating-point fused multiply-add with mixed-precision support,''
+\textit{IEEE Trans. Comput.,} vol.~68, no.~7, pp.~1035--1048, 2019.
+\url{https://doi.org/10.1109/TC.2019.2895031}
 
 \bibitem{zen3}
 M. Evers, L. Barnes, and M. Clark,
@@ -836,11 +885,17 @@ M. Evers, L. Barnes, and M. Clark,
 \textit{IEEE Micro,} vol.~42, no.~3, pp.~7--12, 2022.
 \url{https://doi.org/10.1109/MM.2022.3152788}
 
-\bibitem{ramcalc}
-FinlayDaG33k,
-``RAM Bandwidth Calculator.''
-\url{https://edu.finlaydag33k.nl/calculating%20ram%20bandwidth/},
-\url{https://gitlab.com/FinlayDaG33k/ram-calculator}
+\bibitem{roofline}
+S. Williams, A. Waterman, and D.~A. Patterson,
+``Roofline: an insightful visual performance model for multicore architectures,''
+\textit{Commun. ACM,} vol.~52, pp.~65--76, 2009.
+\url{https://doi.org/10.1145/1498765.1498785}
+
+\bibitem{amdsog}
+Advanced Micro Devices,
+``Software optimization guide for AMD EPYC 7003 series processors
+(family 19h models 00h--0Fh),'' rev. 3.00.
+\url{https://kib.kiev.ua/x86docs/AMD/Optimization/56665_3.00_Software\%20Optimization\%20Guide\%20for\%20AMD\%20Family\%2019h\%20Processors\%20\%28PUB\%29.pdf}
 
 \bibitem{fog2011instruction}
 A. Fog,
@@ -854,56 +909,22 @@ A. Fog,
 and compiler makers,'' 2017, last updated Dec.~15, 2025.
 \url{https://www.agner.org/optimize/microarchitecture.pdf}
 
-\bibitem{avx2}
-P. Gepner,
-``Using AVX2 instruction set to increase performance of high performance computing code,''
-\textit{Computing and Informatics,} vol.~36, no.~5, pp.~1001--1018, 2017.
-\url{https://doi.org/10.4149/cai_2017_5_1001}
+\bibitem{ramcalc}
+FinlayDaG33k,
+``RAM bandwidth calculator.''
+\url{https://edu.finlaydag33k.nl/calculating%20ram%20bandwidth/},
+\url{https://gitlab.com/FinlayDaG33k/ram-calculator}
 
-\bibitem{golub2013}
-G.~H. Golub and C.~F. Van~Loan,
-\textit{Matrix Computations,} 4th~ed.
-Baltimore: Johns Hopkins University Press, 2013.
+\bibitem{bandwidth}
+Z. Smith,
+``bandwidth: a memory bandwidth benchmark.''
+\url{https://zs3.me/bandwidth}
 
 \bibitem{gotoblas}
 K. Goto and R.~A. van~de~Geijn,
 ``Anatomy of high-performance matrix multiplication,''
 \textit{ACM Trans. Math. Softw.,} vol.~34, no.~3, p.~12, 2008.
 \url{https://doi.org/10.1145/1356052.1356053}
-
-\bibitem{hassan2017gemv}
-S.~A. Hassan, M.~M. Mahmoud, A.~M. Hemeida, and M.~A. Saber,
-``Effective implementation of matrix--vector multiplication on Intel's AVX multicore processor,''
-\textit{Comput. Lang. Syst. Struct.,} vol.~51, pp.~158--175, 2017.
-\url{https://doi.org/10.1016/j.cl.2017.06.003}
-
-\bibitem{waferllm}
-C. He, Y. Huang, P. Mu, Z. Miao, J. Xue, L. Ma, et al.,
-``WaferLLM: Large language model inference at wafer scale,''
-arXiv:2502.04563 [cs.LG], 2025.
-\url{https://arxiv.org/abs/2502.04563}
-
-\bibitem{grnn}
-C. Holmes, D. Mawhirter, Y. He, F. Yan, and B. Wu,
-``GRNN: Low-latency and scalable RNN inference on GPUs,''
-in \textit{Proc. 14th EuroSys Conf. (EuroSys'19),}
-New York: ACM, 2019, pp.~41:1--41:16.
-\url{https://doi.org/10.1145/3302424.3303949}
-
-\bibitem{liang2016gemv}
-Y. Liang and Y. Zhang,
-``GEMV optimization on Intel AVX processor,''
-in \textit{Proc. IEEE Int. Conf. High Performance Computing and Communications,} 2016.
-
-\bibitem{singh2021gemv}
-A.~R. Singh and C. Bassoy,
-``Cache-blocked dense matrix-vector multiplication with FMA on x86 architectures,''
-in \textit{Proc. Int. Conf. Algorithms and Architectures for Parallel Processing,} 2021.
-
-\bibitem{bandwidth}
-Z. Smith,
-``bandwidth: a memory bandwidth benchmark.''
-\url{https://zs3.me/bandwidth}
 
 \bibitem{blis}
 F.~G. Van~Zee and R.~A. van~de~Geijn,
@@ -915,63 +936,56 @@ F.~G. Van~Zee and R.~A. van~de~Geijn,
 R.~C. Whaley and J.~J. Dongarra,
 ``Automatically tuned linear algebra software,''
 in \textit{Proc. 1998 ACM/IEEE Conf. Supercomputing (SC'98).}
-IEEE, 1998.
+IEEE, 1998, p.~38.
 \url{https://doi.org/10.1109/SC.1998.10004}
 
-\bibitem{roofline}
-S. Williams, A. Waterman, and D.~A. Patterson,
-``Roofline: an insightful visual performance model for multicore architectures,''
-\textit{Commun. ACM,} vol.~52, pp.~65--76, 2009.
-\url{https://doi.org/10.1145/1498765.1498785}
+\bibitem{hassan2017gemv}
+S.~A. Hassan, M.~M. Mahmoud, A.~M. Hemeida, and M.~A. Saber,
+``Effective implementation of matrix--vector multiplication on Intel's AVX multicore processor,''
+\textit{Comput. Lang. Syst. Struct.,} vol.~51, pp.~158--175, 2017.
+\url{https://doi.org/10.1016/j.cl.2017.06.003}
 
-\bibitem{fma}
-H. Zhang, D. Chen, and S.~B. Ko,
-``Efficient multiple-precision floating-point fused multiply-add with mixed-precision support,''
-\textit{IEEE Trans. Comput.,} vol.~68, no.~7, pp.~1035--1048, 2019.
-\url{https://doi.org/10.1109/TC.2019.2895031}
+\bibitem{kblas}
+A. Abdelfattah, D. Keyes, and H. Ltaief,
+``KBLAS: An optimized library for dense matrix-vector multiplication on GPU accelerators,''
+\textit{ACM Trans. Math. Softw.,} vol.~42, no.~3, p.~18, 2016.
+\url{https://doi.org/10.1145/2818311}
 
+\bibitem{liang2016gemv}
+J. Liang and Y. Zhang,
+``Optimization of GEMV on Intel AVX processor,''
+\textit{Int. J. Database Theory Appl.,} vol.~9, no.~2, pp.~47--60, 2016.
+\url{https://doi.org/10.14257/ijdta.2016.9.2.06}
 
+\bibitem{singh2021gemv}
+A. Singh and C. Bassoy,
+``High-Performance Level-1 and Level-2 BLAS,''
+arXiv:2108.02025 [cs.MS], 2021.
+\url{https://doi.org/10.48550/arXiv.2108.02025}
 
+\bibitem{bylina2022wz}
+B. Bylina, J. Bylina, and M. Piekarz,
+``Influence of loop transformations on performance and energy consumption of the multithreaded WZ factorization,''
+in \textit{Proc. 17th Conf. Computer Science and Intelligence Systems (FedCSIS),
+Ann. Comput. Sci. Inf. Syst.,} vol.~30, pp.~479--488, 2022.
+\url{https://doi.org/10.15439/2022F251}
 
-
-
-
-
-
-\bibitem{amdsog}
-Advanced Micro Devices,
-``Software optimization guide for AMD EPYC 7003 series processors
-(family 19h models 00h--0Fh),'' rev. 3.00.
-\url{https://kib.kiev.ua/x86docs/AMD/Optimization/56665_3.00_Software\%20Optimization\%20Guide\%20for\%20AMD\%20Family\%2019h\%20Processors\%20\%28PUB\%29.pdf}
-
-\bibitem{aoclblas}
-AMD, ``AOCL-BLAS (BLIS fork with AMD optimizations),'' version 5.2.0.
-\url{https://github.com/amd/blis}
+\bibitem{jakobs2018avx}
+T. Jakobs and G. R\"unger,
+``On the energy consumption of Load/Store AVX instructions,''
+in \textit{Proc. 2018 Federated Conf. Computer Science and Information Systems (FedCSIS),
+Ann. Comput. Sci. Inf. Syst.,} vol.~15, pp.~319--327, 2018.
+\url{https://doi.org/10.15439/2018F28}
 
 \bibitem{gccmanual}
 Free Software Foundation,
 ``Using the GNU Compiler Collection (GCC),'' version 15.2.0, 2025.
 \url{https://gcc.gnu.org/onlinedocs/gcc-15.2.0/gcc/}
 
-\bibitem{openblas}
-OpenBLAS: An optimized BLAS library.
-\url{https://www.openblas.net},
-\url{https://github.com/OpenMathLib/OpenBLAS}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+\bibitem{chandra2001parallel}
+R. Chandra, L. Dagum, D. Kohr, R. Menon, D. Maydan, and J. McDonald,
+\textit{Parallel Programming in OpenMP.}
+Morgan Kaufmann, 2001.
 
 \end{thebibliography}
 

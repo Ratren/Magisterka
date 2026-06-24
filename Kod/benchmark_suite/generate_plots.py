@@ -162,9 +162,9 @@ def short_preset_label(preset_name: str, params: dict, kernel: str) -> str:
         return f"{base}\n{params['rows']}x{params['cols']}"
     if kernel == "gemm" and {"m", "n", "k"} <= params.keys():
         return f"{base}\n{params['m']}x{params['n']}x{params['k']}"
-    if kernel == "conv" and {"cin", "h", "w", "k", "cout"} <= params.keys():
-        return (f"{base}\n{params['cin']}x{params['h']}x{params['w']}"
-                f"\nK={params['k']} Co={params['cout']}")
+    # Splot ma 12 ustawien -- pelne wymiary nie zmiescilyby sie czytelnie na osi
+    # X (znajduja sie w tabeli ustawien w pracy), wiec dla conv zostaje sama
+    # nazwa ustawienia.
     return base
 
 
@@ -220,7 +220,8 @@ def plot_kernel(kernel: str, rows: list[dict], threads: int, out_path: Path):
     ax.set_title(f"Wydajność {kernel.upper()} — {title_thread}", fontsize=10)
     ax.set_xticks(x)
     labels = [short_preset_label(r["preset"], r["params"], kernel) for r in rows]
-    ax.set_xticklabels(labels, fontsize=6, rotation=0)
+    xtick_fs = 5 if kernel == "gemm" else 6
+    ax.set_xticklabels(labels, fontsize=xtick_fs, rotation=0)
     ax.tick_params(axis='y', labelsize=7)
     ax.legend(fontsize=7, loc='upper left', framealpha=0.9,
               edgecolor='gray', fancybox=False)
@@ -237,17 +238,18 @@ def plot_kernel(kernel: str, rows: list[dict], threads: int, out_path: Path):
             txt = f"{r['ours_median']:.1f}\n{r['ours_median']/ref:.2f}x"
         else:
             txt = f"{r['ours_median']:.1f}"
-        ax.annotate(txt, xy=(x[i] + ours_offset, r["ours_median"]),
+        # Etykieta wysrodkowana nad slupkiem autorskim moze siegac sasiedniego
+        # slupka (OpenBLAS, tuz po prawej); gdy ten jest wyzszy, podnosimy
+        # etykiete nad jego wierzcholek, by nie nachodzila na slupek.
+        label_y = r["ours_median"]
+        if ref and ref > label_y:
+            label_y = ref
+        ax.annotate(txt, xy=(x[i] + ours_offset, label_y),
                     ha='center', va='bottom', fontsize=5,
                     fontweight='bold', color=PALETTE[0])
-    for j, vp in enumerate(vendor_set):
-        offset = ours_offset + (j + 1) * width
-        for i, v in enumerate(vendor_vals[vp]):
-            if v <= 0:
-                continue
-            ax.annotate(f"{v:.1f}", xy=(x[i] + offset, v),
-                        ha='center', va='bottom', fontsize=5,
-                        color=PALETTE[(j + 1) % len(PALETTE)])
+    # Etykiet nad slupkami bibliotek nie rysujemy -- zgodnie z podpisami w pracy
+    # liczby podaje sie tylko nad slupkiem autorskim (wyzej). Usuwa to nakladanie
+    # sie etykiet sasiednich slupkow widoczne, gdy ich wartosci byly zblizone.
 
     plt.tight_layout()
     fig.savefig(out_path, bbox_inches='tight')
@@ -538,13 +540,77 @@ def _ai_gemv(params: dict):
 
 
 # kernel -> (funkcja OI, nominalna OI dla pulapow poziomych, etykieta tytulu,
-#            zbior nazw presetow do pominiecia na wykresie roofline)
+#            zbior nazw presetow do pominiecia, czy pokazac AOCL-BLAS)
 # tall/wide GEMV pomijamy -- maja niemal te sama OI co medium/large i tylko
-# zageszczaja klaster punktow, nie wnoszac nowej informacji.
+# zageszczaja klaster punktow, nie wnoszac nowej informacji. Dla iloczynu
+# skalarnego pomijamy AOCL-BLAS: wszystkie trzy serie pokrywaja sie niemal
+# idealnie (operacja ograniczona pasmem), wiec trzeci znacznik tylko zaslania
+# pozostale.
 ROOFLINE_KERNELS = {
-    "dot":  (_ai_dot,  0.125, "iloczyn skalarny", set()),
-    "gemv": (_ai_gemv, 0.25,  "GEMV", {"tall", "wide"}),
+    "dot":  (_ai_dot,  0.125, "iloczyn skalarny", set(),            False),
+    "gemv": (_ai_gemv, 0.25,  "GEMV",             {"tall", "wide"}, True),
 }
+
+
+def _place_labels(ax, items, fontsize=6, color="#333333", italic=True,
+                  extra_markers=()):
+    """Rozmieszcza etykiety punktow tak, by nie nachodzily ani na siebie, ani
+    na znaczniki serii. Dla kazdej etykiety wybiera pierwsze z kandydujacych
+    przesuniec (gora/dol/boki/dalej), ktore nie koliduje z juz zajetymi
+    obszarami; przy wiekszym odsunieciu dodaje cienka linie odniesienia.
+    Kolizje liczone w pikselach (transData) z przyblizonym rozmiarem tekstu --
+    wystarczajaco dokladnie dla kilku-kilkunastu etykiet. Wymaga ustalonych
+    wczesniej granic osi."""
+    if not items:
+        return
+    fig = ax.figure
+    ppp = fig.dpi / 72.0
+    char_w = 0.60 * fontsize * ppp
+    line_h = 1.30 * fontsize * ppp
+
+    def make_box(cx, cy, w, h, ha, va):
+        x0 = cx - w / 2.0 if ha == "center" else (cx if ha == "left" else cx - w)
+        y0 = cy if va == "bottom" else (cy - h if va == "top" else cy - h / 2.0)
+        return [x0, y0, x0 + w, y0 + h]
+
+    def hits(a, b):
+        return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
+
+    placed = []
+    for it in items:
+        mx, my = ax.transData.transform((it["x"], it["y"]))
+        placed.append([mx - 3 * ppp, my - 3 * ppp, mx + 3 * ppp, my + 3 * ppp])
+    for mx_, my_ in extra_markers:
+        mx, my = ax.transData.transform((mx_, my_))
+        placed.append([mx - 3 * ppp, my - 3 * ppp, mx + 3 * ppp, my + 3 * ppp])
+
+    cands = [(0, 6, "center", "bottom"), (0, -6, "center", "top"),
+             (6, 2, "left", "bottom"), (-6, 2, "right", "bottom"),
+             (6, -2, "left", "top"), (-6, -2, "right", "top"),
+             (0, 16, "center", "bottom"), (0, -16, "center", "top"),
+             (0, 26, "center", "bottom"), (0, -26, "center", "top")]
+    for it in sorted(items, key=lambda d: (d["x"], -d["y"])):
+        px, py = ax.transData.transform((it["x"], it["y"]))
+        w = max(1, len(it["label"])) * char_w
+        chosen = None
+        for dx, dy, ha, va in cands:
+            b = make_box(px + dx * ppp, py + dy * ppp, w, line_h, ha, va)
+            if not any(hits(b, p) for p in placed):
+                chosen = (dx, dy, ha, va, b)
+                break
+        if chosen is None:
+            dx, dy, ha, va = 0, 32, "center", "bottom"
+            b = make_box(px, py + dy * ppp, w, line_h, ha, va)
+            chosen = (dx, dy, ha, va, b)
+        dx, dy, ha, va, b = chosen
+        placed.append(b)
+        far = abs(dx) >= 6 or abs(dy) >= 14
+        ax.annotate(it["label"], xy=(it["x"], it["y"]),
+                    xytext=(dx, dy), textcoords="offset points",
+                    ha=ha, va=va, fontsize=fontsize, color=color,
+                    fontstyle="italic" if italic else "normal",
+                    arrowprops=(dict(arrowstyle="-", color="gray", lw=0.4,
+                                     alpha=0.5) if far else None))
 
 
 def plot_roofline(kernel: str, rows: list[dict], out_path: Path):
@@ -554,7 +620,7 @@ def plot_roofline(kernel: str, rows: list[dict], out_path: Path):
     spec = ROOFLINE_KERNELS.get(kernel)
     if spec is None or not rows:
         return
-    ai_fn, ai_nominal, kernel_label, exclude = spec
+    ai_fn, ai_nominal, kernel_label, exclude, show_aocl = spec
 
     data = []
     for r in rows:
@@ -565,14 +631,18 @@ def plot_roofline(kernel: str, rows: list[dict], out_path: Path):
         if base in exclude:
             continue
         blas = next((v[1] for v in r["vendors"] if v[0] == "OpenBLAS"), None)
-        data.append({"ai": ai, "ours": r["ours_median"], "blas": blas, "label": base})
+        aocl = (next((v[1] for v in r["vendors"] if v[0] == "AOCL-BLAS"), None)
+                if show_aocl else None)
+        data.append({"ai": ai, "ours": r["ours_median"], "blas": blas,
+                     "aocl": aocl, "label": base})
     if not data:
         return
 
     from matplotlib.ticker import FuncFormatter, FixedLocator, NullLocator
 
     ais = [d["ai"] for d in data]
-    gflops = [d["ours"] for d in data] + [d["blas"] for d in data if d["blas"]]
+    gflops = ([d["ours"] for d in data] + [d["blas"] for d in data if d["blas"]]
+              + [d["aocl"] for d in data if d["aocl"]])
     ai_lo = min(ais) * 0.3
     ai_hi = max(ais) * 6.0
     y_lo = max(1.0, min(gflops) * 0.6)
@@ -624,13 +694,14 @@ def plot_roofline(kernel: str, rows: list[dict], out_path: Path):
         ax.plot([a for a, _ in blas_xy], [b for _, b in blas_xy], "^",
                 markersize=5, color=PALETTE[1], markeredgecolor="black",
                 markeredgewidth=0.5, zorder=10, label="OpenBLAS")
+    aocl_xy = [(d["ai"], d["aocl"]) for d in data if d["aocl"]]
+    if aocl_xy:
+        ax.plot([a for a, _ in aocl_xy], [v for _, v in aocl_xy], "s",
+                markersize=5, color=PALETTE[2], markeredgecolor="black",
+                markeredgewidth=0.5, zorder=10, label="AOCL-BLAS")
 
-    # Etykiety presetow przy punktach autorskich.
-    for d in data:
-        ax.annotate(d["label"], xy=(d["ai"], d["ours"]), fontsize=6,
-                    ha="left", va="bottom", xytext=(6, 4),
-                    textcoords="offset points", fontstyle="italic",
-                    arrowprops=dict(arrowstyle="-", color="gray", lw=0.5, alpha=0.5))
+    # Etykiety ustawien rozmieszcza _place_labels (po ustaleniu granic osi),
+    # tak by nie nachodzily na siebie ani na znaczniki.
 
     ax.set_xlim(ai_lo, ai_hi)
     ax.set_ylim(y_lo, y_hi)
@@ -659,6 +730,10 @@ def plot_roofline(kernel: str, rows: list[dict], out_path: Path):
               edgecolor="gray", fancybox=False)
 
     plt.tight_layout()
+    _place_labels(ax,
+                  [{"x": d["ai"], "y": d["ours"], "label": d["label"]} for d in data],
+                  extra_markers=([(d["ai"], d["blas"]) for d in data if d["blas"]]
+                                 + aocl_xy))
     fig.savefig(out_path, bbox_inches="tight")
     plt.close()
     print(f"Generated {out_path}")
@@ -689,11 +764,16 @@ def _bytes_gemm(params: dict):
     return (m * k + k * n + m * n) * 8.0 if (m and n and k) else None
 
 
-# kernel -> (funkcja rozmiaru [bajty], etykieta jadra, czy rysowac linie szczytu)
+# kernel -> (funkcja rozmiaru [bajty], etykieta jadra, czy rysowac linie szczytu,
+#            zbior nazw ustawien do pominiecia). Pomijamy ustawienia o skrajnych
+#            proporcjach, bo o ich wydajnosci decyduje ksztalt macierzy, a nie
+#            rozmiar zbioru roboczego -- na krzywej "wydajnosc vs rozmiar"
+#            tworzylyby mylacy dol: dla GEMM rank_k i tall_K (~36 MiB, tuz za L3),
+#            dla GEMV wide i tall (analogicznie jak na wykresie roofline).
 SIZE_SWEEP_KERNELS = {
-    "dot":  (_bytes_dot,  "iloczyn skalarny", False),
-    "gemv": (_bytes_gemv, "GEMV",             False),
-    "gemm": (_bytes_gemm, "GEMM",             True),
+    "dot":  (_bytes_dot,  "iloczyn skalarny", False, set()),
+    "gemv": (_bytes_gemv, "GEMV",             False, {"tall", "wide"}),
+    "gemm": (_bytes_gemm, "GEMM",             True,  {"rank_k", "tall_K"}),
 }
 
 
@@ -703,16 +783,20 @@ def plot_size_sweep(kernel: str, rows: list[dict], out_path: Path):
     spec = SIZE_SWEEP_KERNELS.get(kernel)
     if spec is None or not rows:
         return
-    bytes_fn, kernel_label, show_peak = spec
+    bytes_fn, kernel_label, show_peak, exclude = spec
 
     data = []
     for r in rows:
         nb = bytes_fn(r.get("params", {}))
         if nb is None or not r.get("ours_median"):
             continue
-        blas = next((v[1] for v in r["vendors"] if v[0] == "OpenBLAS"), None)
         base = r["preset"].split("_", 1)[1] if "_" in r["preset"] else r["preset"]
-        data.append({"bytes": nb, "ours": r["ours_median"], "blas": blas, "label": base})
+        if base in exclude:
+            continue
+        blas = next((v[1] for v in r["vendors"] if v[0] == "OpenBLAS"), None)
+        aocl = next((v[1] for v in r["vendors"] if v[0] == "AOCL-BLAS"), None)
+        data.append({"bytes": nb, "ours": r["ours_median"], "blas": blas,
+                     "aocl": aocl, "label": base})
     if not data:
         return
     data.sort(key=lambda d: d["bytes"])
@@ -722,7 +806,8 @@ def plot_size_sweep(kernel: str, rows: list[dict], out_path: Path):
     xs = [d["bytes"] for d in data]
     ours = [d["ours"] for d in data]
     blas_xy = [(d["bytes"], d["blas"]) for d in data if d["blas"]]
-    gflops = ours + [b for _, b in blas_xy]
+    aocl_xy = [(d["bytes"], d["aocl"]) for d in data if d["aocl"]]
+    gflops = ours + [b for _, b in blas_xy] + [a for _, a in aocl_xy]
 
     x_lo = min(xs) / 3.0
     x_hi = max(xs) * 3.0
@@ -764,12 +849,14 @@ def plot_size_sweep(kernel: str, rows: list[dict], out_path: Path):
         ax.plot([x for x, _ in blas_xy], [b for _, b in blas_xy], "-^",
                 markersize=5, color=PALETTE[1], markeredgecolor="black",
                 markeredgewidth=0.5, linewidth=1.2, zorder=10, label="OpenBLAS")
+    if aocl_xy:
+        ax.plot([x for x, _ in aocl_xy], [a for _, a in aocl_xy], "-s",
+                markersize=5, color=PALETTE[2], markeredgecolor="black",
+                markeredgewidth=0.5, linewidth=1.2, zorder=10, label="AOCL-BLAS")
 
-    # Etykiety presetow przy punktach autorskich.
-    for d in data:
-        ax.annotate(d["label"], xy=(d["bytes"], d["ours"]), fontsize=6,
-                    ha="center", va="bottom", xytext=(0, 7),
-                    textcoords="offset points", fontstyle="italic", color="#333333")
+    # Etykiety ustawien rozmieszcza _place_labels (po ustaleniu granic osi),
+    # tak by nie nachodzily na siebie ani na znaczniki -- istotne tam, gdzie
+    # ustawienia maja zblizony rozmiar zbioru roboczego (np. wide/tall w GEMV).
 
     ax.set_xlim(x_lo, x_hi)
     ax.set_ylim(0, y_top)
@@ -791,6 +878,9 @@ def plot_size_sweep(kernel: str, rows: list[dict], out_path: Path):
               edgecolor="gray", fancybox=False)
 
     plt.tight_layout()
+    _place_labels(ax,
+                  [{"x": d["bytes"], "y": d["ours"], "label": d["label"]} for d in data],
+                  extra_markers=[(bx, b) for bx, b in blas_xy] + aocl_xy)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close()
     print(f"Generated {out_path}")
